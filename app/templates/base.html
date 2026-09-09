@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recettes → Mealie</title>
+  <script src="/static/js/htmx.min.js"></script>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <header class="app-bar">
+    <div class="app-bar-inner">
+      <span class="app-bar-title">🍲 Recettes</span>
+      <nav class="onglets">
+        <a href="/" class="{{ 'active' if request.url.path == '/' else '' }}">Liste</a>
+        <a href="/ajouter" class="{{ 'active' if request.url.path == '/ajouter' else '' }}">Ajouter</a>
+        <a href="/photo" class="{{ 'active' if request.url.path == '/photo' else '' }}">Photo</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
