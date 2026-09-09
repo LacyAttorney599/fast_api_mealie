@@ -1,6 +1,6 @@
 services:
   app:
-    build: .
+    build: https://github.com/LacyAttorney599/fast_api_mealie.git#main
     ports:
       - "8000:8000"
     environment:
