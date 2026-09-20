@@ -25,11 +25,27 @@ export interface RecipeDetail {
   in_season: boolean;
 }
 
-export async function fetchRecipes(search = ""): Promise<RecipeSummary[]> {
-  const params = search ? `?search=${encodeURIComponent(search)}` : "";
-  const response = await fetch(`/api/recipes${params}`);
+export async function fetchRecipes(search = "", cookbook = ""): Promise<RecipeSummary[]> {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (cookbook) params.set("cookbook", cookbook);
+  const query = params.toString();
+  const response = await fetch(`/api/recipes${query ? `?${query}` : ""}`);
   if (!response.ok) {
     throw new Error(`Échec du chargement des recettes (${response.status})`);
+  }
+  return response.json();
+}
+
+export interface Cookbook {
+  slug: string;
+  name: string;
+}
+
+export async function fetchCookbooks(): Promise<Cookbook[]> {
+  const response = await fetch("/api/cookbooks");
+  if (!response.ok) {
+    throw new Error(`Échec du chargement des livres de recettes (${response.status})`);
   }
   return response.json();
 }

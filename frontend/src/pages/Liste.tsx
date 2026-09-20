@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { fetchRecipes } from "../lib/api";
+import { fetchCookbooks, fetchRecipes } from "../lib/api";
 import styles from "./Liste.module.css";
-
-const filters = ["Tout", "Rapide", "Végétarien", "Dessert", "Plat principal"];
 
 export default function Liste() {
   const [search, setSearch] = useState("");
+  const [selectedCookbook, setSelectedCookbook] = useState<string | null>(null);
+
+  const { data: cookbooks } = useQuery({
+    queryKey: ["cookbooks"],
+    queryFn: fetchCookbooks,
+  });
 
   const { data: recipes, isLoading, isError } = useQuery({
-    queryKey: ["recipes", search],
-    queryFn: () => fetchRecipes(search),
+    queryKey: ["recipes", search, selectedCookbook],
+    queryFn: () => fetchRecipes(search, selectedCookbook ?? ""),
   });
+
+  const activeCookbookName = cookbooks?.find((c) => c.slug === selectedCookbook)?.name;
 
   return (
     <>
@@ -20,7 +26,9 @@ export default function Liste() {
         <div>
           <h1 className={styles.title}>Recettes</h1>
           <p className={styles.subtitle}>
-            {isLoading ? "Chargement…" : `${recipes?.length ?? 0} recettes dans votre livre`}
+            {isLoading
+              ? "Chargement…"
+              : `${recipes?.length ?? 0} recettes${activeCookbookName ? ` dans ${activeCookbookName}` : " dans votre livre"}`}
           </p>
         </div>
         <div className={styles.search}>
@@ -38,10 +46,20 @@ export default function Liste() {
       </div>
 
       <div className={styles.filters}>
-        {filters.map((filter, i) => (
-          <span key={filter} className={i === 0 ? styles.filterActive : styles.filter}>
-            {filter}
-          </span>
+        <button
+          className={selectedCookbook === null ? styles.filterActive : styles.filter}
+          onClick={() => setSelectedCookbook(null)}
+        >
+          Tout
+        </button>
+        {cookbooks?.map((cookbook) => (
+          <button
+            key={cookbook.slug}
+            className={selectedCookbook === cookbook.slug ? styles.filterActive : styles.filter}
+            onClick={() => setSelectedCookbook(cookbook.slug)}
+          >
+            {cookbook.name}
+          </button>
         ))}
       </div>
 

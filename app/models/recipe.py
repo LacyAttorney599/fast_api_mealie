@@ -56,3 +56,8 @@ class SeasonalRecipe(BaseModel):
     slug: str
     name: str
     in_season: bool
+
+
+class Cookbook(BaseModel):
+    slug: str
+    name: str

@@ -1,14 +1,19 @@
 from fastapi import APIRouter
 
-from app.models.recipe import BulkImportResult, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
+from app.models.recipe import BulkImportResult, Cookbook, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
 from app.services import mealie
 
 router = APIRouter(prefix="/api")
 
 
+@router.get("/cookbooks")
+async def list_cookbooks() -> list[Cookbook]:
+    return await mealie.list_cookbooks()
+
+
 @router.get("/recipes")
-async def list_recipes(search: str = "") -> list[RecipeSummary]:
-    return await mealie.list_recipe_summaries(search)
+async def list_recipes(search: str = "", cookbook: str = "") -> list[RecipeSummary]:
+    return await mealie.list_recipe_summaries(search, cookbook)
 
 
 # Doit être déclaré avant /recipes/{slug} : sinon FastAPI matcherait

@@ -4,7 +4,7 @@ import zlib
 import httpx
 
 from app.config import settings
-from app.models.recipe import IngredientDisplay, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
+from app.models.recipe import Cookbook, IngredientDisplay, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
 from app.services import seasons
 from app.services.mealie_client import get_client as _client
 
@@ -18,11 +18,24 @@ _PLACEHOLDER_COLORS = [
 ]
 
 
-async def search_recipes(query: str = "") -> list[dict]:
+async def search_recipes(query: str = "", cookbook: str = "") -> list[dict]:
+    params = {}
+    if query:
+        params["search"] = query
+    if cookbook:
+        params["cookbook"] = cookbook
     async with _client() as client:
-        response = await client.get("/api/recipes", params={"search": query} if query else None)
+        response = await client.get("/api/recipes", params=params or None)
         response.raise_for_status()
         return response.json().get("items", [])
+
+
+async def list_cookbooks() -> list[Cookbook]:
+    async with _client() as client:
+        response = await client.get("/api/households/cookbooks")
+        response.raise_for_status()
+        items = response.json()["items"]
+    return [Cookbook(slug=item["slug"], name=item["name"]) for item in items]
 
 
 def _placeholder_color(slug: str) -> str:
@@ -47,8 +60,8 @@ def _to_summary(item: dict) -> RecipeSummary:
     )
 
 
-async def list_recipe_summaries(query: str = "") -> list[RecipeSummary]:
-    items = await search_recipes(query)
+async def list_recipe_summaries(query: str = "", cookbook: str = "") -> list[RecipeSummary]:
+    items = await search_recipes(query, cookbook)
     return [_to_summary(item) for item in items]
 
 
