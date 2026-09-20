@@ -3,3 +3,6 @@ __pycache__/
 .env
 .venv/
 .claude/
+
+# Export autonome (3.7 Mo) de la maquette UI ; référencée par son URL dans plan.md
+Mealie custom*.html

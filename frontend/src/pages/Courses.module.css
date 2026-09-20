@@ -1,0 +1,166 @@
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 10px;
+}
+
+.clearButton {
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.addButton {
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.body {
+  display: flex;
+  gap: 32px;
+  flex-grow: 1;
+  overflow: auto;
+}
+
+.categories {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  overflow: auto;
+}
+
+.category {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.categoryName {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0 2px 6px;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-sage);
+  flex-shrink: 0;
+}
+
+.itemQty {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-accent);
+  min-width: 70px;
+}
+
+.itemName {
+  font-size: 13.5px;
+  color: var(--color-text);
+}
+
+.itemNameChecked {
+  font-size: 13.5px;
+  color: var(--color-text-faint);
+  text-decoration: line-through;
+}
+
+.sidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.summaryCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summaryLabel {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.summaryValue {
+  font-size: 24px;
+  font-weight: 600;
+  font-family: var(--font-display);
+}
+
+.summaryDetail {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+
+.infoCard {
+  background: var(--color-sage-bg);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.infoTitle {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-sage-text);
+}
+
+.infoText {
+  font-size: 12.5px;
+  color: var(--color-sage-text);
+  line-height: 1.5;
+}
+
+.shareButton {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-weight: 600;
+  font-size: 13.5px;
+}

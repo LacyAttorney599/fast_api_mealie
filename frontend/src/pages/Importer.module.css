@@ -1,0 +1,266 @@
+.title {
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--color-sidebar-bg);
+  padding: 5px;
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.tab,
+.tabActive {
+  padding: 9px 18px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 700;
+  border: none;
+  background: transparent;
+}
+
+.tabActive {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.tab {
+  color: var(--color-text-muted);
+}
+
+.photoPanel,
+.jsonPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex-grow: 1;
+  overflow: auto;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px dashed var(--color-border-dashed);
+  border-radius: var(--radius-xl);
+  padding: 36px;
+  background: var(--color-surface);
+}
+
+.dropzoneTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dropzoneHint {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-text-faint);
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.progressLabel {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.progressSteps {
+  display: flex;
+  align-items: center;
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 160px;
+}
+
+.progressLine,
+.progressLineDone {
+  flex-grow: 1;
+  height: 2px;
+  margin-bottom: 22px;
+}
+
+.progressLineDone {
+  background: var(--color-sage);
+}
+
+.progressLine {
+  background: var(--color-border);
+}
+
+.stepDoneCircle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-sage);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepDoneLabel {
+  font-size: 12px;
+  color: var(--color-text-strong);
+  font-weight: 600;
+}
+
+.stepActiveCircle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepActiveLabel {
+  font-size: 12px;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.stepPendingCircle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-border);
+  color: var(--color-text-faint);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepPendingLabel {
+  font-size: 12px;
+  color: var(--color-text-faint);
+  font-weight: 600;
+}
+
+.jsonColumns {
+  display: flex;
+  gap: 20px;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.jsonInputColumn,
+.detectedColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detectedColumn {
+  overflow: hidden;
+}
+
+.label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.textarea {
+  flex-grow: 1;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  background: var(--color-surface);
+  resize: none;
+  color: var(--color-text-strong);
+  font-family: monospace;
+}
+
+.loadFileButton {
+  align-self: flex-start;
+  padding: 9px 16px;
+  border-radius: 9px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.detectedList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: auto;
+  background: var(--color-surface);
+}
+
+.detectedRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-sage);
+  flex-shrink: 0;
+}
+
+.detectedName {
+  flex-grow: 1;
+  font-size: 13.5px;
+}
+
+.detectedView {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.jsonFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.importButton {
+  padding: 11px 22px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 13.5px;
+}
