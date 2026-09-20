@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { createRecipe, type RecipeDraft } from "../lib/api";
 import styles from "./Ajouter.module.css";
 
 interface Ingredient {
@@ -8,12 +10,37 @@ interface Ingredient {
   food: string;
 }
 
+function fromDraft(draft: RecipeDraft | undefined) {
+  if (!draft) {
+    return { nom: "", ingredients: [{ qty: "", unit: "", food: "" }], steps: [""] };
+  }
+  return {
+    nom: draft.nom,
+    ingredients:
+      draft.ingredients.length > 0
+        ? draft.ingredients.map((ing) => ({
+            qty: ing.quantite !== null ? String(ing.quantite) : "",
+            unit: ing.unite ?? "",
+            food: ing.aliment,
+          }))
+        : [{ qty: "", unit: "", food: "" }],
+    steps: draft.etapes.length > 0 ? draft.etapes : [""],
+  };
+}
+
 export default function Ajouter() {
-  const [nom, setNom] = useState("");
-  const [ingredients, setIngredients] = useState<Ingredient[]>([
-    { qty: "", unit: "", food: "" },
-  ]);
-  const [steps, setSteps] = useState<string[]>([""]);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const initial = fromDraft(location.state as RecipeDraft | undefined);
+
+  const [nom, setNom] = useState(initial.nom);
+  const [ingredients, setIngredients] = useState<Ingredient[]>(initial.ingredients);
+  const [steps, setSteps] = useState<string[]>(initial.steps);
+
+  const saveMutation = useMutation({
+    mutationFn: (draft: RecipeDraft) => createRecipe(draft),
+    onSuccess: ({ slug }) => navigate(`/recette/${slug}`),
+  });
 
   function updateIngredient(index: number, patch: Partial<Ingredient>) {
     setIngredients((current) => current.map((ing, i) => (i === index ? { ...ing, ...patch } : ing)));
@@ -21,6 +48,21 @@ export default function Ajouter() {
 
   function updateStep(index: number, text: string) {
     setSteps((current) => current.map((step, i) => (i === index ? text : step)));
+  }
+
+  function handleSave() {
+    const draft: RecipeDraft = {
+      nom,
+      ingredients: ingredients
+        .filter((ing) => ing.food.trim())
+        .map((ing) => ({
+          quantite: ing.qty.trim() ? Number(ing.qty.replace(",", ".")) : null,
+          unite: ing.unit.trim() || null,
+          aliment: ing.food.trim(),
+        })),
+      etapes: steps.map((step) => step.trim()).filter(Boolean),
+    };
+    saveMutation.mutate(draft);
   }
 
   return (
@@ -113,9 +155,15 @@ export default function Ajouter() {
         </div>
       </div>
 
+      {saveMutation.isError && <p className={styles.error}>Échec de l'enregistrement vers Mealie.</p>}
+
       <div className={styles.footer}>
-        <button className={styles.cancelButton}>Annuler</button>
-        <button className={styles.saveButton}>Enregistrer la recette</button>
+        <button className={styles.cancelButton} onClick={() => navigate("/")}>
+          Annuler
+        </button>
+        <button className={styles.saveButton} disabled={saveMutation.isPending} onClick={handleSave}>
+          {saveMutation.isPending ? "Enregistrement…" : "Enregistrer la recette"}
+        </button>
       </div>
     </>
   );

@@ -56,6 +56,19 @@
   border-radius: var(--radius-xl);
   padding: 36px;
   background: var(--color-surface);
+  cursor: pointer;
+}
+
+.dropzoneActive {
+  composes: dropzone;
+  border-color: var(--color-accent);
+  background: var(--color-sidebar-bg);
+}
+
+.errorText {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-error);
 }
 
 .dropzoneTitle {

@@ -148,3 +148,40 @@ export async function generateShoppingList(start: string, end: string): Promise<
     throw new Error(`Échec de la génération (${response.status})`);
   }
 }
+
+export interface DraftIngredient {
+  quantite: number | null;
+  unite: string | null;
+  aliment: string;
+}
+
+export interface RecipeDraft {
+  nom: string;
+  ingredients: DraftIngredient[];
+  etapes: string[];
+}
+
+export async function createRecipe(draft: RecipeDraft): Promise<{ slug: string }> {
+  const response = await fetch("/api/recipes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(draft),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de l'enregistrement (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function importPhoto(file: File): Promise<RecipeDraft> {
+  const formData = new FormData();
+  formData.append("image", file);
+  const response = await fetch("/api/import/photo", {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de l'import (${response.status})`);
+  }
+  return response.json();
+}

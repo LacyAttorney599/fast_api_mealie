@@ -206,3 +206,12 @@
   font-weight: 700;
   font-size: 13.5px;
 }
+
+.saveButton:disabled {
+  opacity: 0.6;
+}
+
+.error {
+  font-size: 13px;
+  color: var(--color-error);
+}
