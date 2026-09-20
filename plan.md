@@ -44,7 +44,7 @@ Total indicatif : 8 à 11 semaines à temps partiel (+ 1 semaine pour 5b/5c).
 ## Phases 5b/5c — décisions de conception (2026-09-20)
 
 - Calendrier de saison codé en dur côté backend (France, par mois) — pas d'API externe, ces données ne changent pas
-- La liste `GET /api/recipes` de Mealie ne contient pas les ingrédients (il faut le détail par recette pour savoir si c'est "de saison") : ce calcul n'est donc fait qu'à la demande (Planificateur, génération IA), jamais sur l'écran Liste à chaque chargement, pour ne pas dégrader les perfs si le livre de recettes grossit beaucoup (import PDF en masse, Phase 4)
+- La liste `GET /api/recipes` de Mealie ne contient pas les ingrédients (il faut le détail par recette pour savoir si c'est "de saison"). Décision initiale (2026-09-20) : ne calculer ça qu'à la demande (Planificateur, génération IA), jamais sur l'écran Liste. **Révisée le même jour** suite à une demande explicite d'afficher le badge sur la Liste : le calcul y est maintenant fait, mais protégé par (1) un sémaphore limitant à 6 requêtes Mealie concurrentes — un `asyncio.gather` sans limite a fait planter le calcul par timeout sur un vrai test à 36 recettes, pas juste "lent" — et (2) un cache mémoire d'une heure côté BFF (`app/services/mealie.py::list_recipes_with_season`), qui ramène les appels suivants de ~10s à ~40ms
 - La génération IA ne remplit que les créneaux vides de la semaine affichée — n'écrase jamais un créneau déjà planifié
 - Le modèle utilisé est le même Ollama/Qwen2.5:3b déjà en place — à valider en pratique : choisir/répartir des recettes dans une liste est une tâche différente (plus proche de la classification) de la structuration de texte libre où ce modèle avait montré des limites en Phase 3
 
