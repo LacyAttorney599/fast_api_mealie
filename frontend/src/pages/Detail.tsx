@@ -1,15 +1,30 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { fetchRecipe } from "../lib/api";
+import { createMealPlanEntry, fetchRecipe, type MealType } from "../lib/api";
+import { toISODate } from "../lib/dates";
 import styles from "./Detail.module.css";
 
 export default function Detail() {
   const { slug } = useParams<{ slug: string }>();
+  const queryClient = useQueryClient();
+
+  const [planningOpen, setPlanningOpen] = useState(false);
+  const [planningDate, setPlanningDate] = useState(() => toISODate(new Date()));
+  const [planningMeal, setPlanningMeal] = useState<MealType>("dinner");
 
   const { data: recipe, isLoading, isError } = useQuery({
     queryKey: ["recipe", slug],
     queryFn: () => fetchRecipe(slug!),
     enabled: Boolean(slug),
+  });
+
+  const planMutation = useMutation({
+    mutationFn: () => createMealPlanEntry(planningDate, planningMeal, slug!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mealplan"] });
+      setPlanningOpen(false);
+    },
   });
 
   if (isLoading) {
@@ -54,10 +69,39 @@ export default function Detail() {
           <div className={styles.heroTop}>
             <h1 className={styles.title}>{recipe.name}</h1>
             <div className={styles.actions}>
-              <button className={styles.primaryButton}>Ajouter au planning</button>
+              <button className={styles.primaryButton} onClick={() => setPlanningOpen((open) => !open)}>
+                Ajouter au planning
+              </button>
               <button className={styles.secondaryButton}>Modifier</button>
             </div>
           </div>
+
+          {planningOpen && (
+            <div className={styles.planningPanel}>
+              <input
+                type="date"
+                className={styles.planningDate}
+                value={planningDate}
+                onChange={(e) => setPlanningDate(e.target.value)}
+              />
+              <select
+                className={styles.planningMeal}
+                value={planningMeal}
+                onChange={(e) => setPlanningMeal(e.target.value as MealType)}
+              >
+                <option value="lunch">Déjeuner</option>
+                <option value="dinner">Dîner</option>
+              </select>
+              <button
+                className={styles.planningConfirm}
+                disabled={planMutation.isPending}
+                onClick={() => planMutation.mutate()}
+              >
+                {planMutation.isPending ? "Ajout…" : "Confirmer"}
+              </button>
+              {planMutation.isError && <span className={styles.planningError}>Échec de l'ajout</span>}
+            </div>
+          )}
           <div className={styles.meta}>
             {[recipe.time, recipe.servings].filter(Boolean).map((value, i, arr) => (
               <span key={value}>
