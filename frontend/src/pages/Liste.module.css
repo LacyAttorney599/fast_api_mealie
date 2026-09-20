@@ -65,6 +65,15 @@
   color: var(--color-text-strong);
 }
 
+.newCookbookInput {
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-accent);
+  background: var(--color-surface);
+  font-size: 13px;
+  width: 140px;
+}
+
 .filterActive {
   border: none;
   background: var(--color-accent);

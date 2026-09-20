@@ -1,17 +1,38 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { fetchCookbooks, fetchRecipes } from "../lib/api";
+import { createCookbook, fetchCookbooks, fetchRecipes } from "../lib/api";
 import styles from "./Liste.module.css";
 
 export default function Liste() {
   const [search, setSearch] = useState("");
   const [selectedCookbook, setSelectedCookbook] = useState<string | null>(null);
+  const [creatingCookbook, setCreatingCookbook] = useState(false);
+  const [newCookbookName, setNewCookbookName] = useState("");
+  const queryClient = useQueryClient();
 
   const { data: cookbooks } = useQuery({
     queryKey: ["cookbooks"],
     queryFn: fetchCookbooks,
   });
+
+  const createCookbookMutation = useMutation({
+    mutationFn: (name: string) => createCookbook(name),
+    onSuccess: (cookbook) => {
+      queryClient.invalidateQueries({ queryKey: ["cookbooks"] });
+      setSelectedCookbook(cookbook.slug);
+      setNewCookbookName("");
+      setCreatingCookbook(false);
+    },
+  });
+
+  function submitNewCookbook() {
+    if (newCookbookName.trim()) {
+      createCookbookMutation.mutate(newCookbookName.trim());
+    } else {
+      setCreatingCookbook(false);
+    }
+  }
 
   const { data: recipes, isLoading, isError } = useQuery({
     queryKey: ["recipes", search, selectedCookbook],
@@ -61,6 +82,21 @@ export default function Liste() {
             {cookbook.name}
           </button>
         ))}
+        {creatingCookbook ? (
+          <input
+            autoFocus
+            className={styles.newCookbookInput}
+            placeholder="Nom du livre…"
+            value={newCookbookName}
+            onChange={(e) => setNewCookbookName(e.target.value)}
+            onBlur={submitNewCookbook}
+            onKeyDown={(e) => e.key === "Enter" && submitNewCookbook()}
+          />
+        ) : (
+          <button className={styles.filter} onClick={() => setCreatingCookbook(true)}>
+            + Nouveau livre
+          </button>
+        )}
       </div>
 
       {isError && (

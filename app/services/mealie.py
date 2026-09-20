@@ -1,10 +1,19 @@
 import asyncio
+import re
 import zlib
 
 import httpx
 
 from app.config import settings
-from app.models.recipe import Cookbook, IngredientDisplay, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
+from app.models.recipe import (
+    Cookbook,
+    Ingredient,
+    IngredientDisplay,
+    RecipeDetail,
+    RecipeDraft,
+    RecipeSummary,
+    SeasonalRecipe,
+)
 from app.services import seasons
 from app.services.mealie_client import get_client as _client
 
@@ -36,6 +45,78 @@ async def list_cookbooks() -> list[Cookbook]:
         response.raise_for_status()
         items = response.json()["items"]
     return [Cookbook(slug=item["slug"], name=item["name"]) for item in items]
+
+
+async def create_cookbook(name: str) -> Cookbook:
+    async with _client() as client:
+        response = await client.post("/api/households/cookbooks", json={"name": name})
+        response.raise_for_status()
+        data = response.json()
+    return Cookbook(slug=data["slug"], name=data["name"])
+
+
+_ID_LIST_PATTERN = re.compile(r"^id IN \[(.*)\]$")
+
+
+def _parse_id_list_filter(query_filter_string: str) -> list[str] | None:
+    """Un livre géré par l'app utilise toujours un filtre `id IN [...]`
+    (liste explicite de recettes). Si le filtre est vide, la liste est vide.
+    Si c'est autre chose (catégorie, tag... comme "Répertoire des sauces",
+    déjà présent côté foyer), on ne sait pas le modifier sans risquer de le
+    casser : on retourne None pour signaler "non gérable depuis l'app"."""
+    stripped = query_filter_string.strip()
+    if not stripped:
+        return []
+    match = _ID_LIST_PATTERN.match(stripped)
+    if not match:
+        return None
+    return re.findall(r'"([0-9a-fA-F-]{36})"', match.group(1))
+
+
+def _build_id_list_filter(ids: list[str]) -> str:
+    if not ids:
+        return ""
+    return "id IN [" + ", ".join(f'"{i}"' for i in ids) + "]"
+
+
+async def _update_cookbook_recipe_ids(cookbook_slug: str, recipe_slug: str, *, add: bool) -> None:
+    async with _client() as client:
+        response = await client.get(f"/api/households/cookbooks/{cookbook_slug}")
+        response.raise_for_status()
+        cookbook = response.json()
+
+        ids = _parse_id_list_filter(cookbook["queryFilterString"])
+        if ids is None:
+            raise ValueError(
+                "Ce livre utilise un filtre personnalisé (catégorie, tag…) "
+                "non modifiable depuis l'application."
+            )
+
+        recipe_response = await client.get(f"/api/recipes/{recipe_slug}")
+        recipe_response.raise_for_status()
+        recipe_id = recipe_response.json()["id"]
+
+        if add:
+            if recipe_id not in ids:
+                ids.append(recipe_id)
+        else:
+            ids = [i for i in ids if i != recipe_id]
+
+        cookbook["queryFilterString"] = _build_id_list_filter(ids)
+        # PUT (et DELETE) exigent l'id UUID réel du cookbook dans l'URL, pas
+        # son slug — contrairement à GET, qui accepte les deux. Utiliser le
+        # slug ici fait planter Mealie avec un 500 (vérifié empiriquement :
+        # erreur Postgres "invalid input syntax for type uuid").
+        response = await client.put(f"/api/households/cookbooks/{cookbook['id']}", json=cookbook)
+        response.raise_for_status()
+
+
+async def add_recipe_to_cookbook(cookbook_slug: str, recipe_slug: str) -> None:
+    await _update_cookbook_recipe_ids(cookbook_slug, recipe_slug, add=True)
+
+
+async def remove_recipe_from_cookbook(cookbook_slug: str, recipe_slug: str) -> None:
+    await _update_cookbook_recipe_ids(cookbook_slug, recipe_slug, add=False)
 
 
 def _placeholder_color(slug: str) -> str:
@@ -157,6 +238,28 @@ async def _get_or_create_id(client: httpx.AsyncClient, endpoint: str, name: str)
     return response.json()["id"]
 
 
+async def _apply_draft(client: httpx.AsyncClient, recipe: dict, draft: RecipeDraft) -> dict:
+    recipe_ingredients = []
+    for ingredient in draft.ingredients:
+        food_id = await _get_or_create_id(client, "/api/foods", ingredient.aliment)
+        unit = None
+        if ingredient.unite:
+            unit_id = await _get_or_create_id(client, "/api/units", ingredient.unite)
+            unit = {"id": unit_id, "name": ingredient.unite}
+        recipe_ingredients.append(
+            {
+                "quantity": ingredient.quantite,
+                "unit": unit,
+                "food": {"id": food_id, "name": ingredient.aliment},
+                "note": "",
+            }
+        )
+    recipe["name"] = draft.nom
+    recipe["recipeIngredient"] = recipe_ingredients
+    recipe["recipeInstructions"] = [{"text": etape} for etape in draft.etapes]
+    return recipe
+
+
 async def create_recipe(draft: RecipeDraft) -> str:
     """Crée la recette dans Mealie et retourne son slug.
 
@@ -174,26 +277,42 @@ async def create_recipe(draft: RecipeDraft) -> str:
 
         response = await client.get(f"/api/recipes/{slug}")
         response.raise_for_status()
-        recipe = response.json()
-
-        recipe_ingredients = []
-        for ingredient in draft.ingredients:
-            food_id = await _get_or_create_id(client, "/api/foods", ingredient.aliment)
-            unit = None
-            if ingredient.unite:
-                unit_id = await _get_or_create_id(client, "/api/units", ingredient.unite)
-                unit = {"id": unit_id, "name": ingredient.unite}
-            recipe_ingredients.append(
-                {
-                    "quantity": ingredient.quantite,
-                    "unit": unit,
-                    "food": {"id": food_id, "name": ingredient.aliment},
-                    "note": "",
-                }
-            )
-        recipe["recipeIngredient"] = recipe_ingredients
-        recipe["recipeInstructions"] = [{"text": etape} for etape in draft.etapes]
+        recipe = await _apply_draft(client, response.json(), draft)
 
         response = await client.put(f"/api/recipes/{slug}", json=recipe)
         response.raise_for_status()
         return slug
+
+
+async def get_recipe_draft(slug: str) -> RecipeDraft:
+    """Forme éditable (quantite/unite/aliment séparés) pour le formulaire de
+    modification — à la différence de RecipeDetail, qui combine quantité et
+    unité en une seule chaîne d'affichage impossible à re-découper de façon
+    fiable (ex: "1,5 kg" -> 1.5 + "kg" n'est pas trivial à inverser)."""
+    item = await fetch_recipe(slug)
+    ingredients = []
+    for ing in item["recipeIngredient"]:
+        food = ing.get("food")
+        unit = ing.get("unit")
+        aliment = food["name"] if food else (ing.get("note") or ing.get("display") or "")
+        ingredients.append(Ingredient(quantite=ing.get("quantity"), unite=unit["name"] if unit else None, aliment=aliment))
+
+    return RecipeDraft(
+        nom=item["name"],
+        ingredients=ingredients,
+        etapes=[step["text"] for step in item["recipeInstructions"] if step["text"].strip()],
+    )
+
+
+async def update_recipe(slug: str, draft: RecipeDraft) -> str:
+    """Met à jour une recette existante et retourne son slug à jour — Mealie
+    re-génère le slug à partir du nom quand celui-ci change (vérifié
+    empiriquement), donc le slug de retour peut différer de celui d'entrée."""
+    async with _client() as client:
+        response = await client.get(f"/api/recipes/{slug}")
+        response.raise_for_status()
+        recipe = await _apply_draft(client, response.json(), draft)
+
+        response = await client.put(f"/api/recipes/{slug}", json=recipe)
+        response.raise_for_status()
+        return response.json()["slug"]

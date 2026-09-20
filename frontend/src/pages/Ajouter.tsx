@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { createRecipe, type RecipeDraft } from "../lib/api";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { createRecipe, fetchRecipeDraft, updateRecipe, type RecipeDraft } from "../lib/api";
 import styles from "./Ajouter.module.css";
 
 interface Ingredient {
@@ -31,15 +31,33 @@ function fromDraft(draft: RecipeDraft | undefined) {
 export default function Ajouter() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { slug } = useParams<{ slug?: string }>();
+  const isEditMode = Boolean(slug);
+
+  const { data: existingDraft, isLoading: isLoadingDraft } = useQuery({
+    queryKey: ["recipe-draft", slug],
+    queryFn: () => fetchRecipeDraft(slug!),
+    enabled: isEditMode,
+  });
+
   const initial = fromDraft(location.state as RecipeDraft | undefined);
 
   const [nom, setNom] = useState(initial.nom);
   const [ingredients, setIngredients] = useState<Ingredient[]>(initial.ingredients);
   const [steps, setSteps] = useState<string[]>(initial.steps);
 
+  useEffect(() => {
+    if (existingDraft) {
+      const mapped = fromDraft(existingDraft);
+      setNom(mapped.nom);
+      setIngredients(mapped.ingredients);
+      setSteps(mapped.steps);
+    }
+  }, [existingDraft]);
+
   const saveMutation = useMutation({
-    mutationFn: (draft: RecipeDraft) => createRecipe(draft),
-    onSuccess: ({ slug }) => navigate(`/recette/${slug}`),
+    mutationFn: (draft: RecipeDraft) => (isEditMode ? updateRecipe(slug!, draft) : createRecipe(draft)),
+    onSuccess: ({ slug: resultSlug }) => navigate(`/recette/${resultSlug}`),
   });
 
   function updateIngredient(index: number, patch: Partial<Ingredient>) {
@@ -65,22 +83,32 @@ export default function Ajouter() {
     saveMutation.mutate(draft);
   }
 
+  if (isEditMode && isLoadingDraft) {
+    return <p className={styles.subtitle}>Chargement…</p>;
+  }
+
   return (
     <>
       <div>
-        <h1 className={styles.title}>Nouvelle recette</h1>
-        <p className={styles.subtitle}>Saisissez les informations, ou importez-les depuis une photo ou un livre PDF.</p>
+        <h1 className={styles.title}>{isEditMode ? "Modifier la recette" : "Nouvelle recette"}</h1>
+        <p className={styles.subtitle}>
+          {isEditMode
+            ? "Modifiez les informations et enregistrez."
+            : "Saisissez les informations, ou importez-les depuis une photo ou un livre PDF."}
+        </p>
       </div>
 
-      <div className={styles.tabs}>
-        <span className={styles.tabActive}>Saisie manuelle</span>
-        <Link to="/importer" className={styles.tab}>
-          Import photo
-        </Link>
-        <Link to="/importer" className={styles.tab}>
-          Import JSON (livre PDF)
-        </Link>
-      </div>
+      {!isEditMode && (
+        <div className={styles.tabs}>
+          <span className={styles.tabActive}>Saisie manuelle</span>
+          <Link to="/importer" className={styles.tab}>
+            Import photo
+          </Link>
+          <Link to="/importer" className={styles.tab}>
+            Import JSON (livre PDF)
+          </Link>
+        </div>
+      )}
 
       <div className={styles.form}>
         <div className={styles.topRow}>
@@ -88,13 +116,15 @@ export default function Ajouter() {
             <label className={styles.label}>Nom de la recette</label>
             <input className={styles.input} value={nom} onChange={(e) => setNom(e.target.value)} />
           </div>
-          <div className={styles.field}>
-            <label className={styles.label}>Importer depuis une URL</label>
-            <div className={styles.urlRow}>
-              <input className={styles.input} placeholder="https://…" />
-              <button className={styles.extractButton}>Extraire</button>
+          {!isEditMode && (
+            <div className={styles.field}>
+              <label className={styles.label}>Importer depuis une URL</label>
+              <div className={styles.urlRow}>
+                <input className={styles.input} placeholder="https://…" />
+                <button className={styles.extractButton}>Extraire</button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className={styles.columns}>
@@ -158,11 +188,18 @@ export default function Ajouter() {
       {saveMutation.isError && <p className={styles.error}>Échec de l'enregistrement vers Mealie.</p>}
 
       <div className={styles.footer}>
-        <button className={styles.cancelButton} onClick={() => navigate("/")}>
+        <button
+          className={styles.cancelButton}
+          onClick={() => navigate(isEditMode ? `/recette/${slug}` : "/")}
+        >
           Annuler
         </button>
         <button className={styles.saveButton} disabled={saveMutation.isPending} onClick={handleSave}>
-          {saveMutation.isPending ? "Enregistrement…" : "Enregistrer la recette"}
+          {saveMutation.isPending
+            ? "Enregistrement…"
+            : isEditMode
+              ? "Enregistrer les modifications"
+              : "Enregistrer la recette"}
         </button>
       </div>
     </>

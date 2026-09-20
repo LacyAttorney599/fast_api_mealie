@@ -61,3 +61,7 @@ class SeasonalRecipe(BaseModel):
 class Cookbook(BaseModel):
     slug: str
     name: str
+
+
+class CreateCookbook(BaseModel):
+    name: str

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { createMealPlanEntry, fetchRecipe, type MealType } from "../lib/api";
+import { addRecipeToCookbook, createMealPlanEntry, fetchCookbooks, fetchRecipe, type MealType } from "../lib/api";
 import { toISODate } from "../lib/dates";
 import styles from "./Detail.module.css";
 
@@ -13,10 +13,19 @@ export default function Detail() {
   const [planningDate, setPlanningDate] = useState(() => toISODate(new Date()));
   const [planningMeal, setPlanningMeal] = useState<MealType>("dinner");
 
+  const [cookbookPanelOpen, setCookbookPanelOpen] = useState(false);
+  const [selectedCookbook, setSelectedCookbook] = useState("");
+
   const { data: recipe, isLoading, isError } = useQuery({
     queryKey: ["recipe", slug],
     queryFn: () => fetchRecipe(slug!),
     enabled: Boolean(slug),
+  });
+
+  const { data: cookbooks } = useQuery({
+    queryKey: ["cookbooks"],
+    queryFn: fetchCookbooks,
+    enabled: cookbookPanelOpen,
   });
 
   const planMutation = useMutation({
@@ -25,6 +34,11 @@ export default function Detail() {
       queryClient.invalidateQueries({ queryKey: ["mealplan"] });
       setPlanningOpen(false);
     },
+  });
+
+  const addToCookbookMutation = useMutation({
+    mutationFn: () => addRecipeToCookbook(selectedCookbook, slug!),
+    onSuccess: () => setCookbookPanelOpen(false),
   });
 
   if (isLoading) {
@@ -72,7 +86,12 @@ export default function Detail() {
               <button className={styles.primaryButton} onClick={() => setPlanningOpen((open) => !open)}>
                 Ajouter au planning
               </button>
-              <button className={styles.secondaryButton}>Modifier</button>
+              <button className={styles.secondaryButton} onClick={() => setCookbookPanelOpen((open) => !open)}>
+                Ajouter à un livre
+              </button>
+              <Link to={`/recette/${slug}/modifier`} className={styles.secondaryButton}>
+                Modifier
+              </Link>
             </div>
           </div>
 
@@ -100,6 +119,35 @@ export default function Detail() {
                 {planMutation.isPending ? "Ajout…" : "Confirmer"}
               </button>
               {planMutation.isError && <span className={styles.planningError}>Échec de l'ajout</span>}
+            </div>
+          )}
+
+          {cookbookPanelOpen && (
+            <div className={styles.planningPanel}>
+              <select
+                className={styles.planningMeal}
+                value={selectedCookbook}
+                onChange={(e) => setSelectedCookbook(e.target.value)}
+              >
+                <option value="" disabled>
+                  Choisir un livre…
+                </option>
+                {cookbooks?.map((cookbook) => (
+                  <option key={cookbook.slug} value={cookbook.slug}>
+                    {cookbook.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className={styles.planningConfirm}
+                disabled={!selectedCookbook || addToCookbookMutation.isPending}
+                onClick={() => addToCookbookMutation.mutate()}
+              >
+                {addToCookbookMutation.isPending ? "Ajout…" : "Ajouter"}
+              </button>
+              {addToCookbookMutation.isError && (
+                <span className={styles.planningError}>{(addToCookbookMutation.error as Error).message}</span>
+              )}
             </div>
           )}
           <div className={styles.meta}>

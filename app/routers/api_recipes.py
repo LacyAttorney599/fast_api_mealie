@@ -1,14 +1,9 @@
 from fastapi import APIRouter
 
-from app.models.recipe import BulkImportResult, Cookbook, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
+from app.models.recipe import BulkImportResult, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
 from app.services import mealie
 
 router = APIRouter(prefix="/api")
-
-
-@router.get("/cookbooks")
-async def list_cookbooks() -> list[Cookbook]:
-    return await mealie.list_cookbooks()
 
 
 @router.get("/recipes")
@@ -28,10 +23,21 @@ async def get_recipe(slug: str) -> RecipeDetail:
     return await mealie.get_recipe_detail(slug)
 
 
+@router.get("/recipes/{slug}/edit")
+async def get_recipe_for_edit(slug: str) -> RecipeDraft:
+    return await mealie.get_recipe_draft(slug)
+
+
 @router.post("/recipes", status_code=201)
 async def create_recipe(draft: RecipeDraft) -> dict[str, str]:
     slug = await mealie.create_recipe(draft)
     return {"slug": slug}
+
+
+@router.put("/recipes/{slug}")
+async def update_recipe(slug: str, draft: RecipeDraft) -> dict[str, str]:
+    new_slug = await mealie.update_recipe(slug, draft)
+    return {"slug": new_slug}
 
 
 @router.post("/recipes/bulk")

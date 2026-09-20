@@ -50,6 +50,34 @@ export async function fetchCookbooks(): Promise<Cookbook[]> {
   return response.json();
 }
 
+export async function createCookbook(name: string): Promise<Cookbook> {
+  const response = await fetch("/api/cookbooks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de la création du livre (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function addRecipeToCookbook(cookbookSlug: string, recipeSlug: string): Promise<void> {
+  const response = await fetch(`/api/cookbooks/${cookbookSlug}/recipes/${recipeSlug}`, { method: "POST" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail ?? `Échec de l'ajout au livre (${response.status})`);
+  }
+}
+
+export async function removeRecipeFromCookbook(cookbookSlug: string, recipeSlug: string): Promise<void> {
+  const response = await fetch(`/api/cookbooks/${cookbookSlug}/recipes/${recipeSlug}`, { method: "DELETE" });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.detail ?? `Échec du retrait du livre (${response.status})`);
+  }
+}
+
 export async function fetchRecipe(slug: string): Promise<RecipeDetail> {
   const response = await fetch(`/api/recipes/${slug}`);
   if (!response.ok) {
@@ -181,6 +209,26 @@ export interface RecipeDraft {
 export async function createRecipe(draft: RecipeDraft): Promise<{ slug: string }> {
   const response = await fetch("/api/recipes", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(draft),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de l'enregistrement (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function fetchRecipeDraft(slug: string): Promise<RecipeDraft> {
+  const response = await fetch(`/api/recipes/${slug}/edit`);
+  if (!response.ok) {
+    throw new Error(`Échec du chargement (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function updateRecipe(slug: string, draft: RecipeDraft): Promise<{ slug: string }> {
+  const response = await fetch(`/api/recipes/${slug}`, {
+    method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(draft),
   });
