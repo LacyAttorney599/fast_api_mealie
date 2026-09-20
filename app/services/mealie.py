@@ -4,6 +4,7 @@ import httpx
 
 from app.config import settings
 from app.models.recipe import IngredientDisplay, RecipeDetail, RecipeDraft, RecipeSummary
+from app.services.mealie_client import get_client as _client
 
 # Mealie n'a pas de notion de couleur par recette : ces teintes reprennent
 # la palette de la maquette pour les cartes sans photo, choisies par recette
@@ -13,14 +14,6 @@ _PLACEHOLDER_COLORS = [
     "#E3B9A4", "#E7C7A6", "#C9D1B8", "#D9C9A0",
     "#B9C9B0", "#E4CDBF", "#DEC2A4", "#C7CDB0",
 ]
-
-
-def _client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        base_url=settings.mealie_base_url,
-        headers={"Authorization": f"Bearer {settings.mealie_api_token}"},
-        timeout=30,
-    )
 
 
 async def search_recipes(query: str = "") -> list[dict]:

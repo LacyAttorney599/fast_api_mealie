@@ -40,3 +40,44 @@ export async function fetchRecipe(slug: string): Promise<RecipeDetail> {
   }
   return response.json();
 }
+
+export type MealType = "lunch" | "dinner";
+
+export interface MealPlanEntry {
+  id: number;
+  date: string;
+  entry_type: MealType;
+  name: string;
+  recipe_slug: string | null;
+}
+
+export async function fetchMealPlan(start: string, end: string): Promise<MealPlanEntry[]> {
+  const response = await fetch(`/api/mealplan?start=${start}&end=${end}`);
+  if (!response.ok) {
+    throw new Error(`Échec du chargement du planning (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function createMealPlanEntry(
+  date: string,
+  entryType: MealType,
+  recipeSlug: string,
+): Promise<MealPlanEntry> {
+  const response = await fetch("/api/mealplan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ date, entry_type: entryType, recipe_slug: recipeSlug }),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de l'ajout au planning (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function deleteMealPlanEntry(id: number): Promise<void> {
+  const response = await fetch(`/api/mealplan/${id}`, { method: "DELETE" });
+  if (!response.ok) {
+    throw new Error(`Échec de la suppression (${response.status})`);
+  }
+}

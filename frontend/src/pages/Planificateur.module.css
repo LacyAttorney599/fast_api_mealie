@@ -75,10 +75,29 @@
   box-sizing: border-box;
 }
 
+.filledSlotHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+}
+
+.removeButton {
+  border: none;
+  background: none;
+  color: var(--color-text-faint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+}
+
+.removeButton:hover {
+  color: var(--color-error);
 }
 
 .slotName {
@@ -88,15 +107,30 @@
 }
 
 .emptySlot {
+  width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1.5px dashed var(--color-border-dashed);
   border-radius: 12px;
+  background: none;
   font-size: 12px;
   font-weight: 700;
   color: var(--color-text-faint);
+  box-sizing: border-box;
+}
+
+.slotSelect {
+  width: 100%;
+  height: 100%;
+  border: 1.5px solid var(--color-accent);
+  border-radius: 12px;
+  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  padding: 0 8px;
   box-sizing: border-box;
 }
 
