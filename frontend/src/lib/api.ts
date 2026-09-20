@@ -81,3 +81,70 @@ export async function deleteMealPlanEntry(id: number): Promise<void> {
     throw new Error(`Échec de la suppression (${response.status})`);
   }
 }
+
+export interface ShoppingItem {
+  id: string;
+  quantity: string;
+  food: string;
+  checked: boolean;
+  category: string;
+}
+
+export interface ShoppingCategory {
+  name: string;
+  items: ShoppingItem[];
+}
+
+export interface ShoppingList {
+  categories: ShoppingCategory[];
+  total_items: number;
+  recipe_count: number;
+}
+
+export async function fetchShoppingList(): Promise<ShoppingList> {
+  const response = await fetch("/api/shoppinglist");
+  if (!response.ok) {
+    throw new Error(`Échec du chargement de la liste de courses (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function toggleShoppingItem(id: string, checked: boolean): Promise<void> {
+  const response = await fetch(`/api/shoppinglist/items/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ checked }),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de la mise à jour (${response.status})`);
+  }
+}
+
+export async function addShoppingItem(text: string): Promise<void> {
+  const response = await fetch("/api/shoppinglist/items", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de l'ajout (${response.status})`);
+  }
+}
+
+export async function clearCheckedShoppingItems(): Promise<void> {
+  const response = await fetch("/api/shoppinglist/clear-checked", { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`Échec de la suppression (${response.status})`);
+  }
+}
+
+export async function generateShoppingList(start: string, end: string): Promise<void> {
+  const response = await fetch("/api/shoppinglist/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ start, end }),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de la génération (${response.status})`);
+  }
+}

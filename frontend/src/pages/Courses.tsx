@@ -1,68 +1,68 @@
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import {
+  addShoppingItem,
+  clearCheckedShoppingItems,
+  fetchShoppingList,
+  generateShoppingList,
+  toggleShoppingItem,
+} from "../lib/api";
+import { formatWeekRange, getMonday, toISODate } from "../lib/dates";
 import styles from "./Courses.module.css";
 
-interface Item {
-  qty: string;
-  name: string;
-  checked: boolean;
-}
-
-interface Category {
-  name: string;
-  items: Item[];
-}
-
-const initialCategories: Category[] = [
-  {
-    name: "Fruits & légumes",
-    items: [
-      { qty: "3", name: "Poivrons rouges", checked: false },
-      { qty: "2", name: "Oignons", checked: false },
-      { qty: "6", name: "Pommes de terre", checked: false },
-    ],
-  },
-  {
-    name: "Viandes & poissons",
-    items: [
-      { qty: "500 g", name: "Blancs de poulet", checked: false },
-      { qty: "1,2 kg", name: "Épaule de veau", checked: false },
-    ],
-  },
-  {
-    name: "Crèmerie",
-    items: [
-      { qty: "200 g", name: "Crème fraîche", checked: false },
-      { qty: "100 g", name: "Beurre", checked: true },
-    ],
-  },
-  {
-    name: "Épicerie",
-    items: [
-      { qty: "400 g", name: "Tomates concassées", checked: false },
-      { qty: "2 c. à s.", name: "Huile d'olive", checked: true },
-      { qty: "1", name: "Bouquet garni", checked: false },
-    ],
-  },
-];
+const SHOPPING_LIST_KEY = ["shoppinglist"];
 
 export default function Courses() {
-  const [categories, setCategories] = useState(initialCategories);
+  const [searchParams] = useSearchParams();
+  const [addingItem, setAddingItem] = useState(false);
+  const [newItemText, setNewItemText] = useState("");
+  const queryClient = useQueryClient();
 
-  const totalItems = categories.reduce((sum, cat) => sum + cat.items.length, 0);
+  const monday = getMonday(new Date());
+  const start = searchParams.get("start") ?? toISODate(monday);
+  const end = searchParams.get("end") ?? toISODate(monday);
+  const weekLabel = formatWeekRange(new Date(start));
 
-  function toggleItem(categoryName: string, itemName: string) {
-    setCategories((current) =>
-      current.map((cat) =>
-        cat.name !== categoryName
-          ? cat
-          : {
-              ...cat,
-              items: cat.items.map((item) =>
-                item.name === itemName ? { ...item, checked: !item.checked } : item,
-              ),
-            },
-      ),
-    );
+  const { data: list, isLoading } = useQuery({
+    queryKey: SHOPPING_LIST_KEY,
+    queryFn: fetchShoppingList,
+  });
+
+  function invalidate() {
+    queryClient.invalidateQueries({ queryKey: SHOPPING_LIST_KEY });
+  }
+
+  const generateMutation = useMutation({
+    mutationFn: () => generateShoppingList(start, end),
+    onSuccess: invalidate,
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, checked }: { id: string; checked: boolean }) => toggleShoppingItem(id, checked),
+    onSuccess: invalidate,
+  });
+
+  const clearMutation = useMutation({
+    mutationFn: clearCheckedShoppingItems,
+    onSuccess: invalidate,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (text: string) => addShoppingItem(text),
+    onSuccess: () => {
+      invalidate();
+      setNewItemText("");
+      setAddingItem(false);
+    },
+  });
+
+  function submitNewItem() {
+    if (newItemText.trim()) {
+      addMutation.mutate(newItemText.trim());
+    } else {
+      setAddingItem(false);
+    }
   }
 
   return (
@@ -70,50 +70,85 @@ export default function Courses() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Liste de courses</h1>
-          <p className={styles.subtitle}>Générée depuis le planning du 21 – 27 septembre.</p>
+          <p className={styles.subtitle}>Générée depuis le planning du {weekLabel}.</p>
         </div>
         <div className={styles.headerActions}>
-          <button className={styles.clearButton}>Effacer les articles cochés</button>
-          <button className={styles.addButton}>+ Ajouter un article</button>
+          <button className={styles.clearButton} onClick={() => clearMutation.mutate()}>
+            Effacer les articles cochés
+          </button>
+          {addingItem ? (
+            <input
+              autoFocus
+              className={styles.addInput}
+              value={newItemText}
+              placeholder="Nom de l'article…"
+              onChange={(e) => setNewItemText(e.target.value)}
+              onBlur={submitNewItem}
+              onKeyDown={(e) => e.key === "Enter" && submitNewItem()}
+            />
+          ) : (
+            <button className={styles.addButton} onClick={() => setAddingItem(true)}>
+              + Ajouter un article
+            </button>
+          )}
         </div>
       </div>
 
-      <div className={styles.body}>
-        <div className={styles.categories}>
-          {categories.map((cat) => (
-            <div key={cat.name} className={styles.category}>
-              <span className={styles.categoryName}>{cat.name}</span>
-              {cat.items.map((item) => (
-                <div key={item.name} className={styles.itemRow}>
-                  <input
-                    type="checkbox"
-                    checked={item.checked}
-                    onChange={() => toggleItem(cat.name, item.name)}
-                    className={styles.checkbox}
-                  />
-                  <span className={styles.itemQty}>{item.qty}</span>
-                  <span className={item.checked ? styles.itemNameChecked : styles.itemName}>{item.name}</span>
-                </div>
-              ))}
+      {isLoading && <p className={styles.status}>Chargement…</p>}
+
+      {!isLoading && list && list.categories.length === 0 && (
+        <div className={styles.emptyState}>
+          <p>La liste est vide.</p>
+          <button className={styles.generateInline} onClick={() => generateMutation.mutate()}>
+            Générer depuis le planning du {weekLabel}
+          </button>
+        </div>
+      )}
+
+      {!isLoading && list && list.categories.length > 0 && (
+        <div className={styles.body}>
+          <div className={styles.categories}>
+            {list.categories.map((cat) => (
+              <div key={cat.name} className={styles.category}>
+                <span className={styles.categoryName}>{cat.name}</span>
+                {cat.items.map((item) => (
+                  <div key={item.id} className={styles.itemRow}>
+                    <input
+                      type="checkbox"
+                      checked={item.checked}
+                      onChange={(e) => toggleMutation.mutate({ id: item.id, checked: e.target.checked })}
+                      className={styles.checkbox}
+                    />
+                    {item.quantity && <span className={styles.itemQty}>{item.quantity}</span>}
+                    <span className={item.checked ? styles.itemNameChecked : styles.itemName}>{item.food}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.sidebar}>
+            <div className={styles.summaryCard}>
+              <span className={styles.summaryLabel}>Résumé</span>
+              <span className={styles.summaryValue}>{list.total_items} articles</span>
+              <span className={styles.summaryDetail}>
+                {list.categories.length} catégories · {list.recipe_count} recette{list.recipe_count !== 1 && "s"} du
+                planning
+              </span>
             </div>
-          ))}
-        </div>
-
-        <div className={styles.sidebar}>
-          <div className={styles.summaryCard}>
-            <span className={styles.summaryLabel}>Résumé</span>
-            <span className={styles.summaryValue}>{totalItems} articles</span>
-            <span className={styles.summaryDetail}>{categories.length} catégories · 2 recettes du planning</span>
+            <div className={styles.infoCard}>
+              <span className={styles.infoTitle}>Fusion automatique</span>
+              <span className={styles.infoText}>
+                Les quantités identiques sont additionnées automatiquement entre les recettes du planning.
+              </span>
+            </div>
+            <button className={styles.generateButton} onClick={() => generateMutation.mutate()}>
+              Régénérer depuis le planning
+            </button>
+            <button className={styles.shareButton}>Partager la liste</button>
           </div>
-          <div className={styles.infoCard}>
-            <span className={styles.infoTitle}>Fusion automatique</span>
-            <span className={styles.infoText}>
-              Les quantités identiques sont additionnées automatiquement entre les recettes du planning.
-            </span>
-          </div>
-          <button className={styles.shareButton}>Partager la liste</button>
         </div>
-      </div>
+      )}
     </>
   );
 }

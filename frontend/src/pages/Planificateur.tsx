@@ -162,7 +162,7 @@ export default function Planificateur() {
       </div>
 
       <div className={styles.footer}>
-        <Link to="/courses" className={styles.generateButton}>
+        <Link to={`/courses?start=${isoStart}&end=${isoEnd}`} className={styles.generateButton}>
           Générer la liste de courses
         </Link>
       </div>

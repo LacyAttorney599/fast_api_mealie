@@ -39,6 +39,39 @@
   font-size: 13px;
 }
 
+.addInput {
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-accent);
+  background: var(--color-surface);
+  font-size: 13px;
+  width: 200px;
+}
+
+.status {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.generateInline {
+  padding: 11px 18px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
 .body {
   display: flex;
   gap: 32px;
@@ -156,7 +189,8 @@
   line-height: 1.5;
 }
 
-.shareButton {
+.shareButton,
+.generateButton {
   padding: 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
