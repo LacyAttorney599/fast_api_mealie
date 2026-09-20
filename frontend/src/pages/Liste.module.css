@@ -84,15 +84,17 @@
   font-weight: 600;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-content: start;
-  gap: 22px;
+.scrollArea {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding-bottom: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
 }
 
 .card {

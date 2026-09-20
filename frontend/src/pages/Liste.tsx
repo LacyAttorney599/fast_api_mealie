@@ -109,47 +109,49 @@ export default function Liste() {
         <p className={styles.empty}>Aucune recette ne correspond à votre recherche.</p>
       )}
 
-      <div className={styles.grid}>
-        {recipes?.map((recipe) => {
-          const hasPhoto = Boolean(recipe.image_url);
-          return (
-            <div key={recipe.slug} className={styles.card}>
-              <Link
-                to={`/recette/${recipe.slug}`}
-                className={styles.cardImage}
-                style={{ background: hasPhoto ? undefined : recipe.color }}
-              >
-                {hasPhoto ? (
-                  <img className={styles.cardPhoto} src={recipe.image_url!} alt="" />
-                ) : (
-                  <div className={styles.noPhoto}>
-                    <span>Pas de photo</span>
-                  </div>
-                )}
-                <button aria-label="Ajouter aux favoris" className={styles.favoriteButton}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C1592F" strokeWidth={2}>
-                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z" />
-                  </svg>
-                </button>
-              </Link>
-              <div className={styles.cardBody}>
-                <Link to={`/recette/${recipe.slug}`} className={styles.cardName}>
-                  {recipe.name}
-                </Link>
-                <div className={styles.cardMeta}>
-                  {recipe.time && (
-                    <>
-                      <span>{recipe.time}</span>
-                      <span>·</span>
-                    </>
+      <div className={styles.scrollArea}>
+        <div className={styles.grid}>
+          {recipes?.map((recipe) => {
+            const hasPhoto = Boolean(recipe.image_url);
+            return (
+              <div key={recipe.slug} className={styles.card}>
+                <Link
+                  to={`/recette/${recipe.slug}`}
+                  className={styles.cardImage}
+                  style={{ background: hasPhoto ? undefined : recipe.color }}
+                >
+                  {hasPhoto ? (
+                    <img className={styles.cardPhoto} src={recipe.image_url!} alt="" />
+                  ) : (
+                    <div className={styles.noPhoto}>
+                      <span>Pas de photo</span>
+                    </div>
                   )}
-                  <span>{recipe.tag ?? "Sans catégorie"}</span>
+                  <button aria-label="Ajouter aux favoris" className={styles.favoriteButton}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C1592F" strokeWidth={2}>
+                      <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z" />
+                    </svg>
+                  </button>
+                </Link>
+                <div className={styles.cardBody}>
+                  <Link to={`/recette/${recipe.slug}`} className={styles.cardName}>
+                    {recipe.name}
+                  </Link>
+                  <div className={styles.cardMeta}>
+                    {recipe.time && (
+                      <>
+                        <span>{recipe.time}</span>
+                        <span>·</span>
+                      </>
+                    )}
+                    <span>{recipe.tag ?? "Sans catégorie"}</span>
+                  </div>
+                  {!hasPhoto && <button className={styles.suggestButton}>+ Suggérer une photo</button>}
                 </div>
-                {!hasPhoto && <button className={styles.suggestButton}>+ Suggérer une photo</button>}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </>
   );
