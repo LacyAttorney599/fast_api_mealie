@@ -3,7 +3,7 @@ import zlib
 import httpx
 
 from app.config import settings
-from app.models.recipe import RecipeDraft, RecipeSummary
+from app.models.recipe import IngredientDisplay, RecipeDetail, RecipeDraft, RecipeSummary
 
 # Mealie n'a pas de notion de couleur par recette : ces teintes reprennent
 # la palette de la maquette pour les cartes sans photo, choisies par recette
@@ -55,6 +55,61 @@ def _to_summary(item: dict) -> RecipeSummary:
 async def list_recipe_summaries(query: str = "") -> list[RecipeSummary]:
     items = await search_recipes(query)
     return [_to_summary(item) for item in items]
+
+
+async def fetch_recipe(slug: str) -> dict:
+    async with _client() as client:
+        response = await client.get(f"/api/recipes/{slug}")
+        response.raise_for_status()
+        return response.json()
+
+
+def _format_quantity(quantity: float | None, unit: dict | None) -> str:
+    if not quantity:
+        return ""
+    qty_str = f"{quantity:g}".replace(".", ",")
+    if unit and unit.get("name"):
+        return f"{qty_str} {unit['name']}"
+    return qty_str
+
+
+def _to_ingredient_display(ing: dict) -> IngredientDisplay:
+    food = ing.get("food")
+    if food:
+        return IngredientDisplay(qty=_format_quantity(ing.get("quantity"), ing.get("unit")), food=food["name"])
+    # Ingrédient non structuré (ex: recette importée par URL sans parsing fiable) :
+    # pas de food/unit à afficher séparément, on retombe sur le texte brut.
+    return IngredientDisplay(qty="", food=ing.get("note") or ing.get("display") or "")
+
+
+def _format_servings(value: float | None) -> str | None:
+    if not value:
+        return None
+    n = int(value) if value == int(value) else value
+    return f"{n} personne{'s' if n != 1 else ''}"
+
+
+async def get_recipe_detail(slug: str) -> RecipeDetail:
+    item = await fetch_recipe(slug)
+
+    image_url = None
+    if item["image"]:
+        image_url = f"{settings.mealie_base_url}/api/media/recipes/{item['id']}/images/original.webp"
+
+    all_tags = [c["name"] for c in item["recipeCategory"]] + [t["name"] for t in item["tags"]]
+    tags = list(dict.fromkeys(all_tags))  # dédoublonne en gardant l'ordre (catégorie et tag peuvent se recouper)
+
+    return RecipeDetail(
+        slug=item["slug"],
+        name=item["name"],
+        description=item["description"] or "",
+        image_url=image_url,
+        time=item["totalTime"] or item["prepTime"],
+        servings=_format_servings(item["recipeServings"]),
+        tags=tags,
+        ingredients=[_to_ingredient_display(ing) for ing in item["recipeIngredient"]],
+        steps=[step["text"] for step in item["recipeInstructions"] if step["text"].strip()],
+    )
 
 
 async def _get_or_create_id(client: httpx.AsyncClient, endpoint: str, name: str) -> str:

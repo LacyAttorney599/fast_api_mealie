@@ -23,3 +23,22 @@ class RecipeSummary(BaseModel):
     tag: str | None
     image_url: str | None
     color: str
+
+
+class IngredientDisplay(BaseModel):
+    qty: str
+    food: str
+
+
+class RecipeDetail(BaseModel):
+    """Forme renvoyée par le BFF au SPA pour l'écran Détail."""
+
+    slug: str
+    name: str
+    description: str
+    image_url: str | None
+    time: str | None
+    servings: str | None
+    tags: list[str]
+    ingredients: list[IngredientDisplay]
+    steps: list[str]
