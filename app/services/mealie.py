@@ -1,6 +1,8 @@
 import asyncio
 import re
+import time
 import zlib
+from datetime import date
 
 import httpx
 
@@ -206,19 +208,52 @@ async def get_recipe_detail(slug: str) -> RecipeDetail:
     )
 
 
-async def list_recipes_with_season() -> list[SeasonalRecipe]:
-    """Statut "de saison" par recette, calculé à la demande (Planificateur,
-    génération IA) plutôt qu'à chaque affichage de la Liste : la liste Mealie
-    ne renvoie pas les ingrédients, il faut donc un appel détail par recette.
-    Acceptable au volume actuel ; à revoir si le livre de recettes grossit
-    beaucoup (import PDF en masse notamment)."""
+_SEASONAL_CACHE_TTL = 3600  # secondes
+_seasonal_cache: dict[int, list[SeasonalRecipe]] = {}
+_seasonal_cache_at: dict[int, float] = {}
+_seasonal_cache_lock = asyncio.Lock()
+_SEASONAL_CONCURRENCY = 6
+
+
+async def _compute_recipes_with_season() -> list[SeasonalRecipe]:
+    """Un appel détail par recette (la liste Mealie ne renvoie pas les
+    ingrédients). Vérifié empiriquement : tirer les appels tous en même temps
+    (asyncio.gather sans limite) fait planter Mealie sur ~36 recettes — une
+    requête finit par expirer (httpx.ReadTimeout) et fait échouer tout le lot.
+    D'où le sémaphore, qui borne le nombre de requêtes concurrentes envoyées
+    à Mealie."""
     summaries = await list_recipe_summaries()
+    semaphore = asyncio.Semaphore(_SEASONAL_CONCURRENCY)
 
     async def check(summary: RecipeSummary) -> SeasonalRecipe:
-        detail = await get_recipe_detail(summary.slug)
+        async with semaphore:
+            detail = await get_recipe_detail(summary.slug)
         return SeasonalRecipe(slug=summary.slug, name=summary.name, in_season=detail.in_season)
 
     return list(await asyncio.gather(*(check(s) for s in summaries)))
+
+
+async def list_recipes_with_season() -> list[SeasonalRecipe]:
+    """Mis en cache (1h, par mois) : même borné en concurrence, calculer ceci
+    pour chaque recette reste coûteux (un appel détail par recette, la liste
+    Mealie ne renvoie pas les ingrédients) pour être refait à chaque affichage
+    d'un écran qui en a besoin (Liste, Planificateur, génération IA)."""
+    month = date.today().month
+    now = time.monotonic()
+    cached_at = _seasonal_cache_at.get(month)
+    if cached_at is not None and (now - cached_at) < _SEASONAL_CACHE_TTL:
+        return _seasonal_cache[month]
+
+    async with _seasonal_cache_lock:
+        # Un autre appel a pu remplir le cache pendant qu'on attendait le verrou.
+        cached_at = _seasonal_cache_at.get(month)
+        if cached_at is not None and (time.monotonic() - cached_at) < _SEASONAL_CACHE_TTL:
+            return _seasonal_cache[month]
+
+        result = await _compute_recipes_with_season()
+        _seasonal_cache[month] = result
+        _seasonal_cache_at[month] = time.monotonic()
+        return result
 
 
 async def _get_or_create_id(client: httpx.AsyncClient, endpoint: str, name: str) -> str:

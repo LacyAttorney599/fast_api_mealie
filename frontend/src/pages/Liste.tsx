@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { createCookbook, fetchCookbooks, fetchRecipes } from "../lib/api";
+import { createCookbook, fetchCookbooks, fetchRecipes, fetchSeasonalRecipes } from "../lib/api";
 import styles from "./Liste.module.css";
 
 export default function Liste() {
@@ -38,6 +38,16 @@ export default function Liste() {
     queryKey: ["recipes", search, selectedCookbook],
     queryFn: () => fetchRecipes(search, selectedCookbook ?? ""),
   });
+
+  // Calculé côté BFF avec un cache d'une heure (un appel détail par recette,
+  // la liste Mealie ne renvoie pas les ingrédients) : même mis en cache,
+  // inutile de le refaire à chaque frappe dans la recherche.
+  const { data: seasonalRecipes } = useQuery({
+    queryKey: ["recipes-seasonal"],
+    queryFn: fetchSeasonalRecipes,
+    staleTime: 10 * 60 * 1000,
+  });
+  const seasonalSlugs = new Set(seasonalRecipes?.filter((r) => r.in_season).map((r) => r.slug));
 
   const activeCookbookName = cookbooks?.find((c) => c.slug === selectedCookbook)?.name;
 
@@ -132,6 +142,7 @@ export default function Liste() {
                       <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z" />
                     </svg>
                   </button>
+                  {seasonalSlugs.has(recipe.slug) && <span className={styles.seasonBadge}>🌱 De saison</span>}
                 </Link>
                 <div className={styles.cardBody}>
                   <Link to={`/recette/${recipe.slug}`} className={styles.cardName}>
