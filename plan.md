@@ -35,9 +35,18 @@ Estimations en soirs/week-ends (travail en dehors des heures de support IT) ; à
 | 3 — Ajout & import photo | Formulaire manuel, intégration Tesseract + Ollama pour l'import photo unique | 1–2 semaines | Ajout manuel et import photo opérationnels |
 | 4 — Import JSON (livres PDF) | Écran de collage/upload JSON, aperçu des recettes détectées, validation, envoi groupé | 3–5 jours | Import de livre de recettes complet |
 | 5 — Enrichissement photo | Intégration de l'API banque d'images, sauvegarde du résultat dans Mealie | 3–5 jours | Recettes sans photo enrichies automatiquement |
+| 5b — Planning saisonnier | Calendrier légumes/fruits de saison (France), détection des recettes de saison, mise en avant dans le planificateur | 2–3 jours | Recettes de saison visibles au moment de planifier |
+| 5c — Génération IA du planning | Bouton "Générer avec l'IA" sur le Planificateur : remplit les créneaux vides à partir des recettes existantes (Ollama), en tenant compte de la saison et de la variété | 3–5 jours | Planning hebdomadaire généré automatiquement, éditable ensuite |
 | 6 — Déploiement & finition | Stack Docker Compose définitive, bascule du volume Ollama sur SSD, tests, ajustements UI | 1 semaine | Solution en production sur le NAS |
 
-Total indicatif : 8 à 11 semaines à temps partiel.
+Total indicatif : 8 à 11 semaines à temps partiel (+ 1 semaine pour 5b/5c).
+
+## Phases 5b/5c — décisions de conception (2026-09-20)
+
+- Calendrier de saison codé en dur côté backend (France, par mois) — pas d'API externe, ces données ne changent pas
+- La liste `GET /api/recipes` de Mealie ne contient pas les ingrédients (il faut le détail par recette pour savoir si c'est "de saison") : ce calcul n'est donc fait qu'à la demande (Planificateur, génération IA), jamais sur l'écran Liste à chaque chargement, pour ne pas dégrader les perfs si le livre de recettes grossit beaucoup (import PDF en masse, Phase 4)
+- La génération IA ne remplit que les créneaux vides de la semaine affichée — n'écrase jamais un créneau déjà planifié
+- Le modèle utilisé est le même Ollama/Qwen2.5:3b déjà en place — à valider en pratique : choisir/répartir des recettes dans une liste est une tâche différente (plus proche de la classification) de la structuration de texte libre où ce modèle avait montré des limites en Phase 3
 
 ## Décisions actées (Phase 0, 2026-09-20)
 

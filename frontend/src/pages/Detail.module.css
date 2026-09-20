@@ -147,6 +147,15 @@
   font-weight: 600;
 }
 
+.seasonBadge {
+  padding: 6px 14px;
+  border-radius: 16px;
+  background: var(--color-sage);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .description {
   margin: 4px 0 0;
   font-size: 14px;

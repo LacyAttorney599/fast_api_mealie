@@ -4,8 +4,11 @@ import { Link } from "react-router-dom";
 import {
   createMealPlanEntry,
   deleteMealPlanEntry,
+  fetchCurrentSeason,
   fetchMealPlan,
   fetchRecipes,
+  fetchSeasonalRecipes,
+  generateAiMealPlan,
   type MealPlanEntry,
   type MealType,
 } from "../lib/api";
@@ -40,6 +43,25 @@ export default function Planificateur() {
     queryFn: () => fetchRecipes(),
   });
 
+  // Calculé à la demande (pas sur l'écran Liste) : il faut le détail de
+  // chaque recette pour savoir si elle est de saison, ce qui coûte un appel
+  // par recette côté BFF — acceptable pour une visite ponctuelle du
+  // planificateur, pas pour un chargement de liste répété.
+  const { data: seasonalRecipes } = useQuery({
+    queryKey: ["recipes-seasonal"],
+    queryFn: fetchSeasonalRecipes,
+  });
+
+  const { data: currentSeason } = useQuery({
+    queryKey: ["season-current"],
+    queryFn: fetchCurrentSeason,
+  });
+
+  const seasonalSlugs = new Set(seasonalRecipes?.filter((r) => r.in_season).map((r) => r.slug));
+  const sortedRecipes = recipes
+    ? [...recipes].sort((a, b) => Number(seasonalSlugs.has(b.slug)) - Number(seasonalSlugs.has(a.slug)))
+    : recipes;
+
   const mealplanKey = ["mealplan", isoStart, isoEnd];
 
   const createMutation = useMutation({
@@ -53,6 +75,11 @@ export default function Planificateur() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => deleteMealPlanEntry(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: mealplanKey }),
+  });
+
+  const generateAiMutation = useMutation({
+    mutationFn: () => generateAiMealPlan(isoStart, isoEnd),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: mealplanKey }),
   });
 
@@ -100,9 +127,9 @@ export default function Planificateur() {
           <option value="" disabled>
             Choisir une recette…
           </option>
-          {recipes?.map((recipe) => (
+          {sortedRecipes?.map((recipe) => (
             <option key={recipe.slug} value={recipe.slug}>
-              {recipe.name}
+              {seasonalSlugs.has(recipe.slug) ? `🌱 ${recipe.name}` : recipe.name}
             </option>
           ))}
         </select>
@@ -122,6 +149,11 @@ export default function Planificateur() {
         <div>
           <h1 className={styles.title}>Planificateur</h1>
           <p className={styles.subtitle}>Organisez déjeuners et dîners de la semaine.</p>
+          {currentSeason && (
+            <p className={styles.seasonHint}>
+              🌱 De saison ce mois-ci : {currentSeason.produce.join(", ")}
+            </p>
+          )}
         </div>
         <div className={styles.weekNav}>
           <button
@@ -161,7 +193,20 @@ export default function Planificateur() {
         {days.map((d) => <div key={`dinner-${d.iso}`}>{renderSlot(d.iso, "dinner", "#6B7A5E")}</div>)}
       </div>
 
+      {generateAiMutation.isError && (
+        <p className={styles.errorText}>
+          Échec de la génération IA. Vérifiez que le serveur Ollama est joignable.
+        </p>
+      )}
+
       <div className={styles.footer}>
+        <button
+          className={styles.generateAiButton}
+          disabled={generateAiMutation.isPending}
+          onClick={() => generateAiMutation.mutate()}
+        >
+          {generateAiMutation.isPending ? "Génération en cours…" : "✨ Générer avec l'IA"}
+        </button>
         <Link to={`/courses?start=${isoStart}&end=${isoEnd}`} className={styles.generateButton}>
           Générer la liste de courses
         </Link>

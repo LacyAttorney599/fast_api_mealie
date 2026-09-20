@@ -1,9 +1,11 @@
+import asyncio
 import zlib
 
 import httpx
 
 from app.config import settings
-from app.models.recipe import IngredientDisplay, RecipeDetail, RecipeDraft, RecipeSummary
+from app.models.recipe import IngredientDisplay, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
+from app.services import seasons
 from app.services.mealie_client import get_client as _client
 
 # Mealie n'a pas de notion de couleur par recette : ces teintes reprennent
@@ -92,6 +94,10 @@ async def get_recipe_detail(slug: str) -> RecipeDetail:
     all_tags = [c["name"] for c in item["recipeCategory"]] + [t["name"] for t in item["tags"]]
     tags = list(dict.fromkeys(all_tags))  # dédoublonne en gardant l'ordre (catégorie et tag peuvent se recouper)
 
+    ingredients = [_to_ingredient_display(ing) for ing in item["recipeIngredient"]]
+    produce = seasons.current_month_produce()
+    in_season = any(seasons.is_seasonal(ing.food, produce) for ing in ingredients)
+
     return RecipeDetail(
         slug=item["slug"],
         name=item["name"],
@@ -100,9 +106,25 @@ async def get_recipe_detail(slug: str) -> RecipeDetail:
         time=item["totalTime"] or item["prepTime"],
         servings=_format_servings(item["recipeServings"]),
         tags=tags,
-        ingredients=[_to_ingredient_display(ing) for ing in item["recipeIngredient"]],
+        ingredients=ingredients,
         steps=[step["text"] for step in item["recipeInstructions"] if step["text"].strip()],
+        in_season=in_season,
     )
+
+
+async def list_recipes_with_season() -> list[SeasonalRecipe]:
+    """Statut "de saison" par recette, calculé à la demande (Planificateur,
+    génération IA) plutôt qu'à chaque affichage de la Liste : la liste Mealie
+    ne renvoie pas les ingrédients, il faut donc un appel détail par recette.
+    Acceptable au volume actuel ; à revoir si le livre de recettes grossit
+    beaucoup (import PDF en masse notamment)."""
+    summaries = await list_recipe_summaries()
+
+    async def check(summary: RecipeSummary) -> SeasonalRecipe:
+        detail = await get_recipe_detail(summary.slug)
+        return SeasonalRecipe(slug=summary.slug, name=summary.name, in_season=detail.in_season)
+
+    return list(await asyncio.gather(*(check(s) for s in summaries)))
 
 
 async def _get_or_create_id(client: httpx.AsyncClient, endpoint: str, name: str) -> str:

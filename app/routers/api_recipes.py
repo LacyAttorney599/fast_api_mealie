@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.models.recipe import BulkImportResult, RecipeDetail, RecipeDraft, RecipeSummary
+from app.models.recipe import BulkImportResult, RecipeDetail, RecipeDraft, RecipeSummary, SeasonalRecipe
 from app.services import mealie
 
 router = APIRouter(prefix="/api")
@@ -9,6 +9,13 @@ router = APIRouter(prefix="/api")
 @router.get("/recipes")
 async def list_recipes(search: str = "") -> list[RecipeSummary]:
     return await mealie.list_recipe_summaries(search)
+
+
+# Doit être déclaré avant /recipes/{slug} : sinon FastAPI matcherait
+# "seasonal" comme une valeur de slug.
+@router.get("/recipes/seasonal")
+async def list_recipes_seasonal() -> list[SeasonalRecipe]:
+    return await mealie.list_recipes_with_season()
 
 
 @router.get("/recipes/{slug}")

@@ -42,6 +42,7 @@ class RecipeDetail(BaseModel):
     tags: list[str]
     ingredients: list[IngredientDisplay]
     steps: list[str]
+    in_season: bool
 
 
 class BulkImportResult(BaseModel):
@@ -49,3 +50,9 @@ class BulkImportResult(BaseModel):
     success: bool
     slug: str | None = None
     error: str | None = None
+
+
+class SeasonalRecipe(BaseModel):
+    slug: str
+    name: str
+    in_season: bool

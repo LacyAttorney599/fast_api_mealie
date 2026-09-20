@@ -13,3 +13,8 @@ class CreateMealPlanEntry(BaseModel):
     date: str
     entry_type: str
     recipe_slug: str
+
+
+class GenerateAiPlanRequest(BaseModel):
+    start: str
+    end: str

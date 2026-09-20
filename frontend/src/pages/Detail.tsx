@@ -110,8 +110,9 @@ export default function Detail() {
               </span>
             ))}
           </div>
-          {recipe.tags.length > 0 && (
+          {(recipe.tags.length > 0 || recipe.in_season) && (
             <div className={styles.tags}>
+              {recipe.in_season && <span className={styles.seasonBadge}>🌱 De saison</span>}
               {recipe.tags.map((tag) => (
                 <span key={tag} className={styles.tag}>
                   {tag}

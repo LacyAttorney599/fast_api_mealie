@@ -22,6 +22,7 @@ export interface RecipeDetail {
   tags: string[];
   ingredients: Ingredient[];
   steps: string[];
+  in_season: boolean;
 }
 
 export async function fetchRecipes(search = ""): Promise<RecipeSummary[]> {
@@ -201,6 +202,45 @@ export async function createRecipesBulk(drafts: RecipeDraft[]): Promise<BulkImpo
   });
   if (!response.ok) {
     throw new Error(`Échec de l'import (${response.status})`);
+  }
+  return response.json();
+}
+
+export interface SeasonalRecipe {
+  slug: string;
+  name: string;
+  in_season: boolean;
+}
+
+export async function fetchSeasonalRecipes(): Promise<SeasonalRecipe[]> {
+  const response = await fetch("/api/recipes/seasonal");
+  if (!response.ok) {
+    throw new Error(`Échec du chargement (${response.status})`);
+  }
+  return response.json();
+}
+
+export interface CurrentSeason {
+  month: number;
+  produce: string[];
+}
+
+export async function fetchCurrentSeason(): Promise<CurrentSeason> {
+  const response = await fetch("/api/seasons/current");
+  if (!response.ok) {
+    throw new Error(`Échec du chargement (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function generateAiMealPlan(start: string, end: string): Promise<MealPlanEntry[]> {
+  const response = await fetch("/api/mealplan/generate-ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ start, end }),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de la génération (${response.status})`);
   }
   return response.json();
 }
