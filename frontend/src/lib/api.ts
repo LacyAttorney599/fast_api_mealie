@@ -185,3 +185,22 @@ export async function importPhoto(file: File): Promise<RecipeDraft> {
   }
   return response.json();
 }
+
+export interface BulkImportResult {
+  nom: string;
+  success: boolean;
+  slug: string | null;
+  error: string | null;
+}
+
+export async function createRecipesBulk(drafts: RecipeDraft[]): Promise<BulkImportResult[]> {
+  const response = await fetch("/api/recipes/bulk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(drafts),
+  });
+  if (!response.ok) {
+    throw new Error(`Échec de l'import (${response.status})`);
+  }
+  return response.json();
+}

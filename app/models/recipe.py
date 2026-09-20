@@ -42,3 +42,10 @@ class RecipeDetail(BaseModel):
     tags: list[str]
     ingredients: list[IngredientDisplay]
     steps: list[str]
+
+
+class BulkImportResult(BaseModel):
+    nom: str
+    success: bool
+    slug: str | None = None
+    error: str | None = None

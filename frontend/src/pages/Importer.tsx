@@ -1,18 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { importPhoto } from "../lib/api";
+import { createRecipesBulk, importPhoto, type BulkImportResult } from "../lib/api";
+import { parseRecipesJson } from "../lib/parseRecipesJson";
 import styles from "./Importer.module.css";
-
-const detected = [
-  "Tarte aux pommes normande",
-  "Gratin dauphinois",
-  "Poulet rôti aux herbes",
-  "Soupe de potiron",
-  "Clafoutis aux cerises",
-  "Bœuf bourguignon",
-  "Ratatouille",
-];
 
 const sampleJson = `[
   {
@@ -28,6 +19,8 @@ const sampleJson = `[
 
 export default function Importer() {
   const [tab, setTab] = useState<"photo" | "json">("photo");
+
+  // Import photo
   const [fileName, setFileName] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +42,41 @@ export default function Importer() {
     const file = e.dataTransfer.files[0];
     if (file) handleFile(file);
   }
+
+  // Import JSON
+  const [jsonText, setJsonText] = useState("");
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
+
+  const parsed = useMemo(() => parseRecipesJson(jsonText), [jsonText]);
+
+  useEffect(() => {
+    setSelected(new Set(parsed.recipes.map((_, i) => i)));
+    setExpanded(null);
+  }, [parsed.recipes]);
+
+  function toggleSelected(index: number) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function loadJsonFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = () => setJsonText(String(reader.result ?? ""));
+    reader.readAsText(file);
+  }
+
+  const bulkMutation = useMutation({
+    mutationFn: () => createRecipesBulk(parsed.recipes.filter((_, i) => selected.has(i))),
+  });
+
+  const results = bulkMutation.data;
+  const successCount = results?.filter((r) => r.success).length ?? 0;
 
   return (
     <>
@@ -141,24 +169,100 @@ export default function Importer() {
           <div className={styles.jsonColumns}>
             <div className={styles.jsonInputColumn}>
               <label className={styles.label}>Coller le JSON généré par Claude</label>
-              <textarea className={styles.textarea} defaultValue={sampleJson} />
-              <button className={styles.loadFileButton}>Charger un fichier .json</button>
+              <textarea
+                className={styles.textarea}
+                value={jsonText}
+                onChange={(e) => setJsonText(e.target.value)}
+                placeholder={sampleJson}
+              />
+              <input
+                ref={jsonFileInputRef}
+                type="file"
+                accept="application/json,.json"
+                hidden
+                onChange={(e) => e.target.files?.[0] && loadJsonFile(e.target.files[0])}
+              />
+              <button className={styles.loadFileButton} onClick={() => jsonFileInputRef.current?.click()}>
+                Charger un fichier .json
+              </button>
+              {parsed.error && <p className={styles.errorText}>{parsed.error}</p>}
             </div>
             <div className={styles.detectedColumn}>
-              <label className={styles.label}>{detected.length} recettes détectées</label>
+              <label className={styles.label}>
+                {parsed.recipes.length} recette{parsed.recipes.length !== 1 && "s"} détectée
+                {parsed.recipes.length !== 1 && "s"}
+              </label>
               <div className={styles.detectedList}>
-                {detected.map((name) => (
-                  <div key={name} className={styles.detectedRow}>
-                    <input type="checkbox" defaultChecked className={styles.checkbox} />
-                    <span className={styles.detectedName}>{name}</span>
-                    <span className={styles.detectedView}>Voir</span>
+                {parsed.recipes.map((recipe, i) => (
+                  <div key={i}>
+                    <div className={styles.detectedRow}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(i)}
+                        onChange={() => toggleSelected(i)}
+                        className={styles.checkbox}
+                      />
+                      <span className={styles.detectedName}>{recipe.nom}</span>
+                      <button
+                        type="button"
+                        className={styles.detectedView}
+                        onClick={() => setExpanded((current) => (current === i ? null : i))}
+                      >
+                        {expanded === i ? "Masquer" : "Voir"}
+                      </button>
+                    </div>
+                    {expanded === i && (
+                      <div className={styles.preview}>
+                        <span>
+                          {recipe.ingredients.length} ingrédient{recipe.ingredients.length !== 1 && "s"}
+                        </span>
+                        <ul className={styles.previewList}>
+                          {recipe.ingredients.slice(0, 6).map((ing, j) => (
+                            <li key={j}>
+                              {[ing.quantite, ing.unite, ing.aliment].filter(Boolean).join(" ")}
+                            </li>
+                          ))}
+                          {recipe.ingredients.length > 6 && <li>…</li>}
+                        </ul>
+                        <span>
+                          {recipe.etapes.length} étape{recipe.etapes.length !== 1 && "s"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
           </div>
           <div className={styles.jsonFooter}>
-            <button className={styles.importButton}>Importer les recettes sélectionnées ({detected.length})</button>
+            {results ? (
+              <div className={styles.resultsSummary}>
+                <span>
+                  {successCount}/{results.length} recette{results.length !== 1 && "s"} importée
+                  {successCount !== 1 && "s"}.
+                </span>
+                {results
+                  .filter((r) => !r.success)
+                  .map((r: BulkImportResult) => (
+                    <span key={r.nom} className={styles.errorText}>
+                      {r.nom} : {r.error}
+                    </span>
+                  ))}
+                <button className={styles.importButton} onClick={() => navigate("/")}>
+                  Voir la liste des recettes
+                </button>
+              </div>
+            ) : (
+              <button
+                className={styles.importButton}
+                disabled={selected.size === 0 || bulkMutation.isPending}
+                onClick={() => bulkMutation.mutate()}
+              >
+                {bulkMutation.isPending
+                  ? "Import en cours…"
+                  : `Importer les recettes sélectionnées (${selected.size})`}
+              </button>
+            )}
           </div>
         </div>
       )}
