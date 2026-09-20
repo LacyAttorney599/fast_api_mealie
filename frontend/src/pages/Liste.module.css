@@ -26,9 +26,23 @@
   width: 280px;
 }
 
-.searchPlaceholder {
-  color: var(--color-text-faint);
+.searchInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex-grow: 1;
   font-size: 14px;
+  color: var(--color-text);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-faint);
+}
+
+.error,
+.empty {
+  font-size: 14px;
+  color: var(--color-text-muted);
 }
 
 .filters {
@@ -81,6 +95,14 @@
   position: absolute;
   inset: 0;
   margin: auto;
+}
+
+.cardPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .noPhoto {

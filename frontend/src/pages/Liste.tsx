@@ -1,34 +1,39 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
+import { fetchRecipes } from "../lib/api";
 import styles from "./Liste.module.css";
 
 const filters = ["Tout", "Rapide", "Végétarien", "Dessert", "Plat principal"];
 
-const recipes = [
-  { name: "Poulet basquaise", time: "45 min", tag: "Plat principal", color: "#E3B9A4", hasPhoto: true },
-  { name: "Tarte tatin", time: "1 h 10", tag: "Dessert", color: "#E7C7A6", hasPhoto: true },
-  { name: "Risotto aux champignons", time: "35 min", tag: "Végétarien", color: "#C9D1B8", hasPhoto: true },
-  { name: "Soupe à l'oignon gratinée", time: "50 min", tag: "Entrée", color: "#D9C9A0", hasPhoto: true },
-  { name: "Curry de légumes", time: "30 min", tag: "Végétarien", color: "#B9C9B0", hasPhoto: false },
-  { name: "Tiramisu maison", time: "25 min", tag: "Dessert", color: "#E4CDBF", hasPhoto: true },
-  { name: "Quiche lorraine", time: "55 min", tag: "Plat principal", color: "#DEC2A4", hasPhoto: true },
-  { name: "Salade de lentilles, chèvre chaud", time: "20 min", tag: "Rapide", color: "#C7CDB0", hasPhoto: true },
-  { name: "Blanquette de veau", time: "1 h 30", tag: "Plat principal", color: "#E3B9A4", hasPhoto: true },
-];
-
 export default function Liste() {
+  const [search, setSearch] = useState("");
+
+  const { data: recipes, isLoading, isError } = useQuery({
+    queryKey: ["recipes", search],
+    queryFn: () => fetchRecipes(search),
+  });
+
   return (
     <>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Recettes</h1>
-          <p className={styles.subtitle}>{recipes.length} recettes dans votre livre</p>
+          <p className={styles.subtitle}>
+            {isLoading ? "Chargement…" : `${recipes?.length ?? 0} recettes dans votre livre`}
+          </p>
         </div>
         <div className={styles.search}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" strokeWidth={2}>
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
           </svg>
-          <span className={styles.searchPlaceholder}>Rechercher une recette…</span>
+          <input
+            className={styles.searchInput}
+            placeholder="Rechercher une recette…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </div>
 
@@ -40,39 +45,57 @@ export default function Liste() {
         ))}
       </div>
 
+      {isError && (
+        <p className={styles.error}>
+          Impossible de charger les recettes depuis Mealie. Vérifiez que le backend et Mealie sont bien joignables.
+        </p>
+      )}
+
+      {!isLoading && !isError && recipes?.length === 0 && (
+        <p className={styles.empty}>Aucune recette ne correspond à votre recherche.</p>
+      )}
+
       <div className={styles.grid}>
-        {recipes.map((recipe) => (
-          <div key={recipe.name} className={styles.card}>
-            <Link to="/recette/exemple" className={styles.cardImage} style={{ background: recipe.color }}>
-              {recipe.hasPhoto ? (
-                <svg className={styles.cardIcon} width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2B2420" strokeWidth={1.3} opacity={0.35}>
-                  <path d="M12 2a7 7 0 0 0-7 7c0 3 2 5 2 8h10c0-3 2-5 2-8a7 7 0 0 0-7-7z" />
-                  <path d="M9 21h6" />
-                </svg>
-              ) : (
-                <div className={styles.noPhoto}>
-                  <span>Pas de photo</span>
-                </div>
-              )}
-              <button aria-label="Ajouter aux favoris" className={styles.favoriteButton}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C1592F" strokeWidth={2}>
-                  <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z" />
-                </svg>
-              </button>
-            </Link>
-            <div className={styles.cardBody}>
-              <Link to="/recette/exemple" className={styles.cardName}>
-                {recipe.name}
+        {recipes?.map((recipe) => {
+          const hasPhoto = Boolean(recipe.image_url);
+          return (
+            <div key={recipe.slug} className={styles.card}>
+              <Link
+                to={`/recette/${recipe.slug}`}
+                className={styles.cardImage}
+                style={{ background: hasPhoto ? undefined : recipe.color }}
+              >
+                {hasPhoto ? (
+                  <img className={styles.cardPhoto} src={recipe.image_url!} alt="" />
+                ) : (
+                  <div className={styles.noPhoto}>
+                    <span>Pas de photo</span>
+                  </div>
+                )}
+                <button aria-label="Ajouter aux favoris" className={styles.favoriteButton}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C1592F" strokeWidth={2}>
+                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z" />
+                  </svg>
+                </button>
               </Link>
-              <div className={styles.cardMeta}>
-                <span>{recipe.time}</span>
-                <span>·</span>
-                <span>{recipe.tag}</span>
+              <div className={styles.cardBody}>
+                <Link to={`/recette/${recipe.slug}`} className={styles.cardName}>
+                  {recipe.name}
+                </Link>
+                <div className={styles.cardMeta}>
+                  {recipe.time && (
+                    <>
+                      <span>{recipe.time}</span>
+                      <span>·</span>
+                    </>
+                  )}
+                  <span>{recipe.tag ?? "Sans catégorie"}</span>
+                </div>
+                {!hasPhoto && <button className={styles.suggestButton}>+ Suggérer une photo</button>}
               </div>
-              {!recipe.hasPhoto && <button className={styles.suggestButton}>+ Suggérer une photo</button>}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </>
   );

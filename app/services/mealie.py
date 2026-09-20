@@ -1,7 +1,18 @@
+import zlib
+
 import httpx
 
 from app.config import settings
-from app.models.recipe import RecipeDraft
+from app.models.recipe import RecipeDraft, RecipeSummary
+
+# Mealie n'a pas de notion de couleur par recette : ces teintes reprennent
+# la palette de la maquette pour les cartes sans photo, choisies par recette
+# via un hash stable (pas de random : la couleur ne doit pas changer à
+# chaque rechargement).
+_PLACEHOLDER_COLORS = [
+    "#E3B9A4", "#E7C7A6", "#C9D1B8", "#D9C9A0",
+    "#B9C9B0", "#E4CDBF", "#DEC2A4", "#C7CDB0",
+]
 
 
 def _client() -> httpx.AsyncClient:
@@ -17,6 +28,33 @@ async def search_recipes(query: str = "") -> list[dict]:
         response = await client.get("/api/recipes", params={"search": query} if query else None)
         response.raise_for_status()
         return response.json().get("items", [])
+
+
+def _placeholder_color(slug: str) -> str:
+    return _PLACEHOLDER_COLORS[zlib.crc32(slug.encode()) % len(_PLACEHOLDER_COLORS)]
+
+
+def _to_summary(item: dict) -> RecipeSummary:
+    category = item["recipeCategory"][0]["name"] if item["recipeCategory"] else None
+    tag = category or (item["tags"][0]["name"] if item["tags"] else None)
+
+    image_url = None
+    if item["image"]:
+        image_url = f"{settings.mealie_base_url}/api/media/recipes/{item['id']}/images/min-original.webp"
+
+    return RecipeSummary(
+        slug=item["slug"],
+        name=item["name"],
+        time=item["totalTime"] or item["prepTime"],
+        tag=tag,
+        image_url=image_url,
+        color=_placeholder_color(item["slug"]),
+    )
+
+
+async def list_recipe_summaries(query: str = "") -> list[RecipeSummary]:
+    items = await search_recipes(query)
+    return [_to_summary(item) for item in items]
 
 
 async def _get_or_create_id(client: httpx.AsyncClient, endpoint: str, name: str) -> str:
