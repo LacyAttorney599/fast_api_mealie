@@ -2,6 +2,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  flex-shrink: 0;
 }
 
 .title {
@@ -47,7 +48,9 @@
 
 .filters {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .filter,
@@ -84,8 +87,12 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
   gap: 22px;
-  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 4px;
 }
 
 .card {
