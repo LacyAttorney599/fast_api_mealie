@@ -1,9 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { addRecipeToCookbook, createMealPlanEntry, fetchCookbooks, fetchRecipe, type MealType } from "../lib/api";
 import { toISODate } from "../lib/dates";
 import styles from "./Detail.module.css";
+
+function formatQuantity(quantity: number, unit: string | null): string {
+  const rounded = Math.round(quantity * 100) / 100;
+  const qtyStr = rounded.toString().replace(".", ",");
+  return unit ? `${qtyStr} ${unit}` : qtyStr;
+}
 
 export default function Detail() {
   const { slug } = useParams<{ slug: string }>();
@@ -16,11 +22,20 @@ export default function Detail() {
   const [cookbookPanelOpen, setCookbookPanelOpen] = useState(false);
   const [selectedCookbook, setSelectedCookbook] = useState("");
 
+  const [customServings, setCustomServings] = useState<number | null>(null);
+  useEffect(() => {
+    setCustomServings(null);
+  }, [slug]);
+
   const { data: recipe, isLoading, isError } = useQuery({
     queryKey: ["recipe", slug],
     queryFn: () => fetchRecipe(slug!),
     enabled: Boolean(slug),
   });
+
+  const baseServings = recipe?.servings ?? null;
+  const displayServings = customServings ?? baseServings;
+  const servingsScale = baseServings && displayServings ? displayServings / baseServings : 1;
 
   const { data: cookbooks } = useQuery({
     queryKey: ["cookbooks"],
@@ -151,12 +166,29 @@ export default function Detail() {
             </div>
           )}
           <div className={styles.meta}>
-            {[recipe.time, recipe.servings].filter(Boolean).map((value, i, arr) => (
-              <span key={value}>
-                {value}
-                {i < arr.length - 1 && <span className={styles.metaDot}>·</span>}
-              </span>
-            ))}
+            {recipe.time && <span>{recipe.time}</span>}
+            {recipe.time && baseServings && <span className={styles.metaDot}>·</span>}
+            {baseServings && (
+              <div className={styles.servingsControl}>
+                <button
+                  aria-label="Moins de parts"
+                  className={styles.servingsButton}
+                  onClick={() => setCustomServings(Math.max(1, (displayServings ?? baseServings) - 1))}
+                >
+                  −
+                </button>
+                <span className={styles.servingsValue}>
+                  {displayServings} personne{displayServings !== 1 ? "s" : ""}
+                </span>
+                <button
+                  aria-label="Plus de parts"
+                  className={styles.servingsButton}
+                  onClick={() => setCustomServings((displayServings ?? baseServings) + 1)}
+                >
+                  +
+                </button>
+              </div>
+            )}
           </div>
           {(recipe.tags.length > 0 || recipe.in_season) && (
             <div className={styles.tags}>
@@ -176,13 +208,16 @@ export default function Detail() {
         <div className={styles.ingredients}>
           <h2 className={styles.sectionTitle}>Ingrédients</h2>
           <div className={styles.ingredientList}>
-            {recipe.ingredients.map((ing, i) => (
-              <div key={i} className={styles.ingredientRow}>
-                <input type="checkbox" className={styles.checkbox} />
-                {ing.qty && <span className={styles.ingredientQty}>{ing.qty}</span>}
-                <span>{ing.food}</span>
-              </div>
-            ))}
+            {recipe.ingredients.map((ing, i) => {
+              const qty = ing.quantity != null ? formatQuantity(ing.quantity * servingsScale, ing.unit) : "";
+              return (
+                <div key={i} className={styles.ingredientRow}>
+                  <input type="checkbox" className={styles.checkbox} />
+                  {qty && <span className={styles.ingredientQty}>{qty}</span>}
+                  <span>{ing.food}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className={styles.steps}>

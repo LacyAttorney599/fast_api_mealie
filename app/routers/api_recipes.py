@@ -40,6 +40,16 @@ async def update_recipe(slug: str, draft: RecipeDraft) -> dict[str, str]:
     return {"slug": new_slug}
 
 
+@router.post("/recipes/{slug}/favorite", status_code=204)
+async def add_favorite(slug: str) -> None:
+    await mealie.set_favorite(slug, True)
+
+
+@router.delete("/recipes/{slug}/favorite", status_code=204)
+async def remove_favorite(slug: str) -> None:
+    await mealie.set_favorite(slug, False)
+
+
 @router.post("/recipes/bulk")
 async def create_recipes_bulk(drafts: list[RecipeDraft]) -> list[BulkImportResult]:
     """Import groupé (ex: livre de recettes extrait en JSON par Claude).

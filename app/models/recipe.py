@@ -23,10 +23,16 @@ class RecipeSummary(BaseModel):
     tag: str | None
     image_url: str | None
     color: str
+    is_favorite: bool
 
 
 class IngredientDisplay(BaseModel):
-    qty: str
+    """Quantité et unité brutes (pas de texte déjà formaté) : le SPA doit
+    pouvoir recalculer l'affichage quand l'utilisateur change le nombre de
+    parts."""
+
+    quantity: float | None
+    unit: str | None
     food: str
 
 
@@ -38,7 +44,7 @@ class RecipeDetail(BaseModel):
     description: str
     image_url: str | None
     time: str | None
-    servings: str | None
+    servings: float | None
     tags: list[str]
     ingredients: list[IngredientDisplay]
     steps: list[str]

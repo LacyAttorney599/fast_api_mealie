@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
+  addFavorite,
   createCookbook,
   fetchCookbookCategories,
   fetchCookbooks,
   fetchRecipes,
   fetchSeasonalRecipes,
+  removeFavorite,
   removeRecipeFromCookbook,
 } from "../lib/api";
 import styles from "./Liste.module.css";
@@ -55,6 +57,14 @@ export default function Liste() {
 
   const removeFromCookbookMutation = useMutation({
     mutationFn: (recipeSlug: string) => removeRecipeFromCookbook(selectedCookbook!, recipeSlug),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recipes", search, selectedCookbook] });
+    },
+  });
+
+  const favoriteMutation = useMutation({
+    mutationFn: ({ slug, favorite }: { slug: string; favorite: boolean }) =>
+      favorite ? addFavorite(slug) : removeFavorite(slug),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recipes", search, selectedCookbook] });
     },
@@ -233,8 +243,24 @@ export default function Liste() {
                       <span>Pas de photo</span>
                     </div>
                   )}
-                  <button aria-label="Ajouter aux favoris" className={styles.favoriteButton}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C1592F" strokeWidth={2}>
+                  <button
+                    aria-label={recipe.is_favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                    className={styles.favoriteButton}
+                    disabled={favoriteMutation.isPending}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      favoriteMutation.mutate({ slug: recipe.slug, favorite: !recipe.is_favorite });
+                    }}
+                  >
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill={recipe.is_favorite ? "#C1592F" : "none"}
+                      stroke="#C1592F"
+                      strokeWidth={2}
+                    >
                       <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.6z" />
                     </svg>
                   </button>

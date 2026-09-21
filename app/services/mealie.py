@@ -160,7 +160,7 @@ def _placeholder_color(slug: str) -> str:
     return _PLACEHOLDER_COLORS[zlib.crc32(slug.encode()) % len(_PLACEHOLDER_COLORS)]
 
 
-def _to_summary(item: dict) -> RecipeSummary:
+def _to_summary(item: dict, favorite_ids: set[str]) -> RecipeSummary:
     category = item["recipeCategory"][0]["name"] if item["recipeCategory"] else None
     tag = category or (item["tags"][0]["name"] if item["tags"] else None)
 
@@ -175,12 +175,50 @@ def _to_summary(item: dict) -> RecipeSummary:
         tag=tag,
         image_url=image_url,
         color=_placeholder_color(item["slug"]),
+        is_favorite=item["id"] in favorite_ids,
     )
 
 
 async def list_recipe_summaries(query: str = "", cookbook: str = "") -> list[RecipeSummary]:
     items = await search_recipes(query, cookbook)
-    return [_to_summary(item) for item in items]
+    favorite_ids = await list_favorite_recipe_ids()
+    return [_to_summary(item, favorite_ids) for item in items]
+
+
+_self_user_id: str | None = None
+
+
+async def _get_self_user_id() -> str:
+    """L'API de favoris de Mealie exige l'UUID réel de l'utilisateur pour
+    POST/DELETE (contrairement à GET, qui accepte l'alias "self") — l'id est
+    stable pour ce token, donc mis en cache après le premier appel."""
+    global _self_user_id
+    if _self_user_id is None:
+        async with _client() as client:
+            response = await client.get("/api/users/self")
+            response.raise_for_status()
+            _self_user_id = response.json()["id"]
+    return _self_user_id
+
+
+async def list_favorite_recipe_ids() -> set[str]:
+    user_id = await _get_self_user_id()
+    async with _client() as client:
+        response = await client.get(f"/api/users/{user_id}/favorites")
+        response.raise_for_status()
+        ratings = response.json()["ratings"]
+    return {r["recipeId"] for r in ratings if r.get("isFavorite")}
+
+
+async def set_favorite(recipe_slug: str, favorite: bool) -> None:
+    user_id = await _get_self_user_id()
+    async with _client() as client:
+        response = await (
+            client.post(f"/api/users/{user_id}/favorites/{recipe_slug}")
+            if favorite
+            else client.delete(f"/api/users/{user_id}/favorites/{recipe_slug}")
+        )
+        response.raise_for_status()
 
 
 async def fetch_recipe(slug: str) -> dict:
@@ -190,29 +228,18 @@ async def fetch_recipe(slug: str) -> dict:
         return response.json()
 
 
-def _format_quantity(quantity: float | None, unit: dict | None) -> str:
-    if not quantity:
-        return ""
-    qty_str = f"{quantity:g}".replace(".", ",")
-    if unit and unit.get("name"):
-        return f"{qty_str} {unit['name']}"
-    return qty_str
-
-
 def _to_ingredient_display(ing: dict) -> IngredientDisplay:
     food = ing.get("food")
+    unit = ing.get("unit")
     if food:
-        return IngredientDisplay(qty=_format_quantity(ing.get("quantity"), ing.get("unit")), food=food["name"])
+        return IngredientDisplay(
+            quantity=ing.get("quantity") or None,
+            unit=unit["name"] if unit and unit.get("name") else None,
+            food=food["name"],
+        )
     # Ingrédient non structuré (ex: recette importée par URL sans parsing fiable) :
     # pas de food/unit à afficher séparément, on retombe sur le texte brut.
-    return IngredientDisplay(qty="", food=ing.get("note") or ing.get("display") or "")
-
-
-def _format_servings(value: float | None) -> str | None:
-    if not value:
-        return None
-    n = int(value) if value == int(value) else value
-    return f"{n} personne{'s' if n != 1 else ''}"
+    return IngredientDisplay(quantity=None, unit=None, food=ing.get("note") or ing.get("display") or "")
 
 
 async def get_recipe_detail(slug: str) -> RecipeDetail:
@@ -235,7 +262,7 @@ async def get_recipe_detail(slug: str) -> RecipeDetail:
         description=item["description"] or "",
         image_url=image_url,
         time=item["totalTime"] or item["prepTime"],
-        servings=_format_servings(item["recipeServings"]),
+        servings=item["recipeServings"] or None,
         tags=tags,
         ingredients=ingredients,
         steps=[step["text"] for step in item["recipeInstructions"] if step["text"].strip()],

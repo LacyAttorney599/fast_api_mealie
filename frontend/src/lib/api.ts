@@ -5,10 +5,12 @@ export interface RecipeSummary {
   tag: string | null;
   image_url: string | null;
   color: string;
+  is_favorite: boolean;
 }
 
 export interface Ingredient {
-  qty: string;
+  quantity: number | null;
+  unit: string | null;
   food: string;
 }
 
@@ -18,11 +20,25 @@ export interface RecipeDetail {
   description: string;
   image_url: string | null;
   time: string | null;
-  servings: string | null;
+  servings: number | null;
   tags: string[];
   ingredients: Ingredient[];
   steps: string[];
   in_season: boolean;
+}
+
+export async function addFavorite(slug: string): Promise<void> {
+  const response = await fetch(`/api/recipes/${slug}/favorite`, { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`Échec de l'ajout aux favoris (${response.status})`);
+  }
+}
+
+export async function removeFavorite(slug: string): Promise<void> {
+  const response = await fetch(`/api/recipes/${slug}/favorite`, { method: "DELETE" });
+  if (!response.ok) {
+    throw new Error(`Échec du retrait des favoris (${response.status})`);
+  }
 }
 
 export async function fetchRecipes(search = "", cookbook = ""): Promise<RecipeSummary[]> {
