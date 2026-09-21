@@ -24,6 +24,53 @@ function findEntry(entries: MealPlanEntry[] | undefined, date: string, mealType:
   return entries?.find((entry) => entry.date === date && entry.entry_type === mealType);
 }
 
+interface RecipeOption {
+  slug: string;
+  name: string;
+  seasonal: boolean;
+}
+
+function RecipeSearchPicker({
+  recipes,
+  onSelect,
+  onCancel,
+}: {
+  recipes: RecipeOption[];
+  onSelect: (slug: string) => void;
+  onCancel: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const filtered = recipes.filter((r) => r.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8);
+
+  return (
+    <div
+      className={styles.slotPicker}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          onCancel();
+        }
+      }}
+    >
+      <input
+        autoFocus
+        className={styles.slotPickerInput}
+        placeholder="Rechercher une recette…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => e.key === "Escape" && onCancel()}
+      />
+      <div className={styles.slotPickerList}>
+        {filtered.map((recipe) => (
+          <button key={recipe.slug} className={styles.slotPickerOption} onClick={() => onSelect(recipe.slug)}>
+            {recipe.seasonal ? `🌱 ${recipe.name}` : recipe.name}
+          </button>
+        ))}
+        {filtered.length === 0 && <span className={styles.slotPickerEmpty}>Aucun résultat</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function Planificateur() {
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [addingSlot, setAddingSlot] = useState<Slot | null>(null);
@@ -113,26 +160,15 @@ export default function Planificateur() {
 
     if (isAdding) {
       return (
-        <select
-          autoFocus
-          className={styles.slotSelect}
-          defaultValue=""
-          onBlur={() => setAddingSlot(null)}
-          onChange={(e) => {
-            if (e.target.value) {
-              createMutation.mutate({ date, mealType, recipeSlug: e.target.value });
-            }
-          }}
-        >
-          <option value="" disabled>
-            Choisir une recette…
-          </option>
-          {sortedRecipes?.map((recipe) => (
-            <option key={recipe.slug} value={recipe.slug}>
-              {seasonalSlugs.has(recipe.slug) ? `🌱 ${recipe.name}` : recipe.name}
-            </option>
-          ))}
-        </select>
+        <RecipeSearchPicker
+          recipes={(sortedRecipes ?? []).map((recipe) => ({
+            slug: recipe.slug,
+            name: recipe.name,
+            seasonal: seasonalSlugs.has(recipe.slug),
+          }))}
+          onSelect={(recipeSlug) => createMutation.mutate({ date, mealType, recipeSlug })}
+          onCancel={() => setAddingSlot(null)}
+        />
       );
     }
 

@@ -4,12 +4,16 @@ import { Link } from "react-router-dom";
 import { createCookbook, fetchCookbooks, fetchRecipes, fetchSeasonalRecipes } from "../lib/api";
 import styles from "./Liste.module.css";
 
+type Filter = "all" | "seasonal" | { cookbook: string };
+
 export default function Liste() {
   const [search, setSearch] = useState("");
-  const [selectedCookbook, setSelectedCookbook] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>("seasonal");
   const [creatingCookbook, setCreatingCookbook] = useState(false);
   const [newCookbookName, setNewCookbookName] = useState("");
   const queryClient = useQueryClient();
+
+  const selectedCookbook = typeof filter === "object" ? filter.cookbook : null;
 
   const { data: cookbooks } = useQuery({
     queryKey: ["cookbooks"],
@@ -20,7 +24,7 @@ export default function Liste() {
     mutationFn: (name: string) => createCookbook(name),
     onSuccess: (cookbook) => {
       queryClient.invalidateQueries({ queryKey: ["cookbooks"] });
-      setSelectedCookbook(cookbook.slug);
+      setFilter({ cookbook: cookbook.slug });
       setNewCookbookName("");
       setCreatingCookbook(false);
     },
@@ -34,7 +38,7 @@ export default function Liste() {
     }
   }
 
-  const { data: recipes, isLoading, isError } = useQuery({
+  const { data: allRecipes, isLoading, isError } = useQuery({
     queryKey: ["recipes", search, selectedCookbook],
     queryFn: () => fetchRecipes(search, selectedCookbook ?? ""),
   });
@@ -42,14 +46,18 @@ export default function Liste() {
   // Calculé côté BFF avec un cache d'une heure (un appel détail par recette,
   // la liste Mealie ne renvoie pas les ingrédients) : même mis en cache,
   // inutile de le refaire à chaque frappe dans la recherche.
-  const { data: seasonalRecipes } = useQuery({
+  const { data: seasonalRecipes, isLoading: isLoadingSeasonal } = useQuery({
     queryKey: ["recipes-seasonal"],
     queryFn: fetchSeasonalRecipes,
     staleTime: 10 * 60 * 1000,
   });
   const seasonalSlugs = new Set(seasonalRecipes?.filter((r) => r.in_season).map((r) => r.slug));
 
+  const recipes = filter === "seasonal" ? allRecipes?.filter((r) => seasonalSlugs.has(r.slug)) : allRecipes;
+
   const activeCookbookName = cookbooks?.find((c) => c.slug === selectedCookbook)?.name;
+  const subtitleSuffix =
+    filter === "seasonal" ? " de saison" : activeCookbookName ? ` dans ${activeCookbookName}` : " dans votre livre";
 
   return (
     <>
@@ -57,9 +65,9 @@ export default function Liste() {
         <div>
           <h1 className={styles.title}>Recettes</h1>
           <p className={styles.subtitle}>
-            {isLoading
+            {isLoading || (filter === "seasonal" && isLoadingSeasonal)
               ? "Chargement…"
-              : `${recipes?.length ?? 0} recettes${activeCookbookName ? ` dans ${activeCookbookName}` : " dans votre livre"}`}
+              : `${recipes?.length ?? 0} recette${(recipes?.length ?? 0) !== 1 ? "s" : ""}${subtitleSuffix}`}
           </p>
         </div>
         <div className={styles.search}>
@@ -77,17 +85,17 @@ export default function Liste() {
       </div>
 
       <div className={styles.filters}>
-        <button
-          className={selectedCookbook === null ? styles.filterActive : styles.filter}
-          onClick={() => setSelectedCookbook(null)}
-        >
+        <button className={filter === "seasonal" ? styles.filterActive : styles.filter} onClick={() => setFilter("seasonal")}>
+          🌱 De saison
+        </button>
+        <button className={filter === "all" ? styles.filterActive : styles.filter} onClick={() => setFilter("all")}>
           Tout
         </button>
         {cookbooks?.map((cookbook) => (
           <button
             key={cookbook.slug}
             className={selectedCookbook === cookbook.slug ? styles.filterActive : styles.filter}
-            onClick={() => setSelectedCookbook(cookbook.slug)}
+            onClick={() => setFilter({ cookbook: cookbook.slug })}
           >
             {cookbook.name}
           </button>
@@ -115,8 +123,12 @@ export default function Liste() {
         </p>
       )}
 
-      {!isLoading && !isError && recipes?.length === 0 && (
-        <p className={styles.empty}>Aucune recette ne correspond à votre recherche.</p>
+      {!isLoading && !isError && !(filter === "seasonal" && isLoadingSeasonal) && recipes?.length === 0 && (
+        <p className={styles.empty}>
+          {filter === "seasonal"
+            ? "Aucune recette de saison trouvée pour le moment."
+            : "Aucune recette ne correspond à votre recherche."}
+        </p>
       )}
 
       <div className={styles.scrollArea}>
