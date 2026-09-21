@@ -11,6 +11,7 @@ from app.models.recipe import (
     Cookbook,
     Ingredient,
     IngredientDisplay,
+    RecipeCategory,
     RecipeDetail,
     RecipeDraft,
     RecipeSummary,
@@ -46,38 +47,72 @@ async def list_cookbooks() -> list[Cookbook]:
         response = await client.get("/api/households/cookbooks")
         response.raise_for_status()
         items = response.json()["items"]
-    return [Cookbook(slug=item["slug"], name=item["name"]) for item in items]
+    return [
+        Cookbook(
+            slug=item["slug"],
+            name=item["name"],
+            manual=_parse_id_list_filter(item.get("queryFilterString", "")) is not None,
+        )
+        for item in items
+    ]
 
 
-async def create_cookbook(name: str) -> Cookbook:
+async def list_recipe_categories() -> list[RecipeCategory]:
     async with _client() as client:
-        response = await client.post("/api/households/cookbooks", json={"name": name})
+        response = await client.get("/api/organizers/categories")
+        response.raise_for_status()
+        items = response.json()["items"]
+    return [RecipeCategory(id=item["id"], name=item["name"]) for item in items]
+
+
+async def create_cookbook(name: str, category_id: str | None = None) -> Cookbook:
+    """Deux types de livre : manuel (l'utilisateur choisit les recettes une à
+    une, stocké comme un filtre `id IN [...]`) ou automatique par catégorie
+    (filtre `recipe_category.id IN [...]`, se met à jour tout seul quand la
+    catégorie d'une recette change). Un livre manuel démarre toujours avec un
+    filtre explicite plutôt que vide — voir _build_id_list_filter."""
+    query_filter = f'recipe_category.id IN ["{category_id}"]' if category_id else _build_id_list_filter([])
+
+    async with _client() as client:
+        response = await client.post(
+            "/api/households/cookbooks",
+            json={"name": name, "queryFilterString": query_filter},
+        )
         response.raise_for_status()
         data = response.json()
-    return Cookbook(slug=data["slug"], name=data["name"])
+    return Cookbook(slug=data["slug"], name=data["name"], manual=category_id is None)
 
 
 _ID_LIST_PATTERN = re.compile(r"^id IN \[(.*)\]$")
+
+# Mealie traite un `queryFilterString` vide comme "pas de filtre" = TOUTES les
+# recettes (bug constaté : un livre manuel fraîchement créé sans recette
+# affichait les 50 recettes de la base). Et `id IN []` (tableau vide) est
+# rejeté par Mealie avec un 422. Un livre manuel vide utilise donc un id
+# sentinelle qui ne correspond à aucune vraie recette.
+_EMPTY_COOKBOOK_SENTINEL_ID = "00000000-0000-0000-0000-000000000000"
 
 
 def _parse_id_list_filter(query_filter_string: str) -> list[str] | None:
     """Un livre géré par l'app utilise toujours un filtre `id IN [...]`
     (liste explicite de recettes). Si le filtre est vide, la liste est vide.
     Si c'est autre chose (catégorie, tag... comme "Répertoire des sauces",
-    déjà présent côté foyer), on ne sait pas le modifier sans risquer de le
-    casser : on retourne None pour signaler "non gérable depuis l'app"."""
-    stripped = query_filter_string.strip()
+    déjà présent côté foyer, ou un livre créé par catégorie depuis l'app), on
+    ne sait pas le modifier sans risquer de le casser : on retourne None pour
+    signaler "non gérable manuellement depuis l'app"."""
+    stripped = (query_filter_string or "").strip()
     if not stripped:
         return []
     match = _ID_LIST_PATTERN.match(stripped)
     if not match:
         return None
-    return re.findall(r'"([0-9a-fA-F-]{36})"', match.group(1))
+    ids = re.findall(r'"([0-9a-fA-F-]{36})"', match.group(1))
+    return [i for i in ids if i != _EMPTY_COOKBOOK_SENTINEL_ID]
 
 
 def _build_id_list_filter(ids: list[str]) -> str:
     if not ids:
-        return ""
+        return f'id IN ["{_EMPTY_COOKBOOK_SENTINEL_ID}"]'
     return "id IN [" + ", ".join(f'"{i}"' for i in ids) + "]"
 
 

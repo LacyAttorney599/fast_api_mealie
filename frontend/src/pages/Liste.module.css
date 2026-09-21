@@ -68,13 +68,85 @@
   color: var(--color-text-strong);
 }
 
+.newCookbookWrapper {
+  position: relative;
+}
+
 .newCookbookInput {
   padding: 8px 16px;
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--color-accent);
   background: var(--color-surface);
   font-size: 13px;
-  width: 140px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.newCookbookPanel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 280px;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+
+.newCookbookModeRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.newCookbookModeOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+
+.newCookbookCategorySelect {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 13px;
+}
+
+.newCookbookActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.newCookbookCancel {
+  padding: 7px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: none;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.newCookbookConfirm {
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+.newCookbookConfirm:disabled {
+  opacity: 0.5;
 }
 
 .filterActive {
@@ -199,4 +271,18 @@
   background: none;
   border: none;
   padding: 2px 0 0;
+}
+
+.removeFromBookButton {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-error);
+  background: none;
+  border: none;
+  padding: 2px 0 0;
+}
+
+.removeFromBookButton:disabled {
+  opacity: 0.5;
 }

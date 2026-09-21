@@ -40,6 +40,7 @@ export async function fetchRecipes(search = "", cookbook = ""): Promise<RecipeSu
 export interface Cookbook {
   slug: string;
   name: string;
+  manual: boolean;
 }
 
 export async function fetchCookbooks(): Promise<Cookbook[]> {
@@ -50,11 +51,24 @@ export async function fetchCookbooks(): Promise<Cookbook[]> {
   return response.json();
 }
 
-export async function createCookbook(name: string): Promise<Cookbook> {
+export interface RecipeCategory {
+  id: string;
+  name: string;
+}
+
+export async function fetchCookbookCategories(): Promise<RecipeCategory[]> {
+  const response = await fetch("/api/cookbooks/categories");
+  if (!response.ok) {
+    throw new Error(`Échec du chargement des catégories (${response.status})`);
+  }
+  return response.json();
+}
+
+export async function createCookbook(name: string, categoryId?: string): Promise<Cookbook> {
   const response = await fetch("/api/cookbooks", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, category_id: categoryId ?? null }),
   });
   if (!response.ok) {
     throw new Error(`Échec de la création du livre (${response.status})`);

@@ -61,7 +61,14 @@ class SeasonalRecipe(BaseModel):
 class Cookbook(BaseModel):
     slug: str
     name: str
+    manual: bool = True
 
 
 class CreateCookbook(BaseModel):
+    name: str
+    category_id: str | None = None
+
+
+class RecipeCategory(BaseModel):
+    id: str
     name: str

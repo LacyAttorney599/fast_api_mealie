@@ -1,16 +1,26 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { createCookbook, fetchCookbooks, fetchRecipes, fetchSeasonalRecipes } from "../lib/api";
+import {
+  createCookbook,
+  fetchCookbookCategories,
+  fetchCookbooks,
+  fetchRecipes,
+  fetchSeasonalRecipes,
+  removeRecipeFromCookbook,
+} from "../lib/api";
 import styles from "./Liste.module.css";
 
 type Filter = "all" | "seasonal" | { cookbook: string };
+type NewCookbookMode = "manual" | "category";
 
 export default function Liste() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("seasonal");
   const [creatingCookbook, setCreatingCookbook] = useState(false);
   const [newCookbookName, setNewCookbookName] = useState("");
+  const [newCookbookMode, setNewCookbookMode] = useState<NewCookbookMode>("manual");
+  const [newCookbookCategoryId, setNewCookbookCategoryId] = useState("");
   const queryClient = useQueryClient();
 
   const selectedCookbook = typeof filter === "object" ? filter.cookbook : null;
@@ -20,23 +30,38 @@ export default function Liste() {
     queryFn: fetchCookbooks,
   });
 
+  const { data: categories } = useQuery({
+    queryKey: ["cookbook-categories"],
+    queryFn: fetchCookbookCategories,
+    enabled: creatingCookbook,
+  });
+
+  function resetNewCookbookForm() {
+    setCreatingCookbook(false);
+    setNewCookbookName("");
+    setNewCookbookMode("manual");
+    setNewCookbookCategoryId("");
+  }
+
   const createCookbookMutation = useMutation({
-    mutationFn: (name: string) => createCookbook(name),
+    mutationFn: () =>
+      createCookbook(newCookbookName.trim(), newCookbookMode === "category" ? newCookbookCategoryId : undefined),
     onSuccess: (cookbook) => {
       queryClient.invalidateQueries({ queryKey: ["cookbooks"] });
       setFilter({ cookbook: cookbook.slug });
-      setNewCookbookName("");
-      setCreatingCookbook(false);
+      resetNewCookbookForm();
     },
   });
 
-  function submitNewCookbook() {
-    if (newCookbookName.trim()) {
-      createCookbookMutation.mutate(newCookbookName.trim());
-    } else {
-      setCreatingCookbook(false);
-    }
-  }
+  const removeFromCookbookMutation = useMutation({
+    mutationFn: (recipeSlug: string) => removeRecipeFromCookbook(selectedCookbook!, recipeSlug),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recipes", search, selectedCookbook] });
+    },
+  });
+
+  const activeCookbook = cookbooks?.find((c) => c.slug === selectedCookbook);
+  const canRemoveFromBook = Boolean(selectedCookbook) && activeCookbook?.manual === true;
 
   const { data: allRecipes, isLoading, isError } = useQuery({
     queryKey: ["recipes", search, selectedCookbook],
@@ -55,9 +80,8 @@ export default function Liste() {
 
   const recipes = filter === "seasonal" ? allRecipes?.filter((r) => seasonalSlugs.has(r.slug)) : allRecipes;
 
-  const activeCookbookName = cookbooks?.find((c) => c.slug === selectedCookbook)?.name;
   const subtitleSuffix =
-    filter === "seasonal" ? " de saison" : activeCookbookName ? ` dans ${activeCookbookName}` : " dans votre livre";
+    filter === "seasonal" ? " de saison" : activeCookbook ? ` dans ${activeCookbook.name}` : " dans votre livre";
 
   return (
     <>
@@ -97,24 +121,84 @@ export default function Liste() {
             className={selectedCookbook === cookbook.slug ? styles.filterActive : styles.filter}
             onClick={() => setFilter({ cookbook: cookbook.slug })}
           >
+            {!cookbook.manual && "🏷 "}
             {cookbook.name}
           </button>
         ))}
-        {creatingCookbook ? (
-          <input
-            autoFocus
-            className={styles.newCookbookInput}
-            placeholder="Nom du livre…"
-            value={newCookbookName}
-            onChange={(e) => setNewCookbookName(e.target.value)}
-            onBlur={submitNewCookbook}
-            onKeyDown={(e) => e.key === "Enter" && submitNewCookbook()}
-          />
-        ) : (
-          <button className={styles.filter} onClick={() => setCreatingCookbook(true)}>
-            + Nouveau livre
-          </button>
-        )}
+        <div className={styles.newCookbookWrapper}>
+          {creatingCookbook ? (
+            <div
+              className={styles.newCookbookPanel}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  resetNewCookbookForm();
+                }
+              }}
+            >
+              <input
+                autoFocus
+                className={styles.newCookbookInput}
+                placeholder="Nom du livre…"
+                value={newCookbookName}
+                onChange={(e) => setNewCookbookName(e.target.value)}
+              />
+              <div className={styles.newCookbookModeRow}>
+                <label className={styles.newCookbookModeOption}>
+                  <input
+                    type="radio"
+                    checked={newCookbookMode === "manual"}
+                    onChange={() => setNewCookbookMode("manual")}
+                  />
+                  Manuel — j'ajoute les recettes moi-même
+                </label>
+                <label className={styles.newCookbookModeOption}>
+                  <input
+                    type="radio"
+                    checked={newCookbookMode === "category"}
+                    onChange={() => setNewCookbookMode("category")}
+                  />
+                  Automatique — toutes les recettes d'une catégorie
+                </label>
+              </div>
+              {newCookbookMode === "category" && (
+                <select
+                  className={styles.newCookbookCategorySelect}
+                  value={newCookbookCategoryId}
+                  onChange={(e) => setNewCookbookCategoryId(e.target.value)}
+                >
+                  <option value="" disabled>
+                    Choisir une catégorie…
+                  </option>
+                  {categories?.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <div className={styles.newCookbookActions}>
+                <button className={styles.newCookbookCancel} onClick={resetNewCookbookForm}>
+                  Annuler
+                </button>
+                <button
+                  className={styles.newCookbookConfirm}
+                  disabled={
+                    !newCookbookName.trim() ||
+                    (newCookbookMode === "category" && !newCookbookCategoryId) ||
+                    createCookbookMutation.isPending
+                  }
+                  onClick={() => createCookbookMutation.mutate()}
+                >
+                  {createCookbookMutation.isPending ? "Création…" : "Créer"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button className={styles.filter} onClick={() => setCreatingCookbook(true)}>
+              + Nouveau livre
+            </button>
+          )}
+        </div>
       </div>
 
       {isError && (
@@ -170,6 +254,15 @@ export default function Liste() {
                     <span>{recipe.tag ?? "Sans catégorie"}</span>
                   </div>
                   {!hasPhoto && <button className={styles.suggestButton}>+ Suggérer une photo</button>}
+                  {canRemoveFromBook && (
+                    <button
+                      className={styles.removeFromBookButton}
+                      disabled={removeFromCookbookMutation.isPending}
+                      onClick={() => removeFromCookbookMutation.mutate(recipe.slug)}
+                    >
+                      Retirer du livre
+                    </button>
+                  )}
                 </div>
               </div>
             );

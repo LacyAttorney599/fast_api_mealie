@@ -132,7 +132,7 @@ export default function Detail() {
                 <option value="" disabled>
                   Choisir un livre…
                 </option>
-                {cookbooks?.map((cookbook) => (
+                {cookbooks?.filter((cookbook) => cookbook.manual).map((cookbook) => (
                   <option key={cookbook.slug} value={cookbook.slug}>
                     {cookbook.name}
                   </option>

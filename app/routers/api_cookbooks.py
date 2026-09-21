@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from app.models.recipe import Cookbook, CreateCookbook
+from app.models.recipe import Cookbook, CreateCookbook, RecipeCategory
 from app.services import mealie
 
 router = APIRouter(prefix="/api/cookbooks")
@@ -11,9 +11,14 @@ async def list_cookbooks() -> list[Cookbook]:
     return await mealie.list_cookbooks()
 
 
+@router.get("/categories")
+async def list_categories() -> list[RecipeCategory]:
+    return await mealie.list_recipe_categories()
+
+
 @router.post("", status_code=201)
 async def create_cookbook(payload: CreateCookbook) -> Cookbook:
-    return await mealie.create_cookbook(payload.name)
+    return await mealie.create_cookbook(payload.name, payload.category_id)
 
 
 @router.post("/{cookbook_slug}/recipes/{recipe_slug}", status_code=204)
