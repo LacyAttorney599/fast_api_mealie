@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
   addShoppingItem,
+  clearAllShoppingItems,
   clearCheckedShoppingItems,
   fetchShoppingList,
   generateShoppingList,
@@ -48,6 +49,17 @@ export default function Courses() {
     onSuccess: invalidate,
   });
 
+  const clearAllMutation = useMutation({
+    mutationFn: clearAllShoppingItems,
+    onSuccess: invalidate,
+  });
+
+  function handleClearAll() {
+    if (window.confirm("Vider toute la liste de courses ?")) {
+      clearAllMutation.mutate();
+    }
+  }
+
   const addMutation = useMutation({
     mutationFn: (text: string) => addShoppingItem(text),
     onSuccess: () => {
@@ -75,6 +87,9 @@ export default function Courses() {
         <div className={styles.headerActions}>
           <button className={styles.clearButton} onClick={() => clearMutation.mutate()}>
             Effacer les articles cochés
+          </button>
+          <button className={styles.clearAllButton} onClick={handleClearAll}>
+            Vider la liste
           </button>
           {addingItem ? (
             <input

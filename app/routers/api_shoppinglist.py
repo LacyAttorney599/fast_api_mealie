@@ -26,6 +26,11 @@ async def clear_checked() -> None:
     await shoppinglist.clear_checked()
 
 
+@router.post("/clear-all", status_code=204)
+async def clear_all() -> None:
+    await shoppinglist.clear_all()
+
+
 @router.post("/generate", status_code=204)
 async def generate(payload: GenerateShoppingList) -> None:
     await shoppinglist.generate_from_mealplan(payload.start, payload.end)

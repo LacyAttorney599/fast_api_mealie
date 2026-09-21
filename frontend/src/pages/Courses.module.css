@@ -29,6 +29,16 @@
   font-size: 13px;
 }
 
+.clearAllButton {
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-error);
+  background: var(--color-surface);
+  color: var(--color-error);
+  font-weight: 600;
+  font-size: 13px;
+}
+
 .addButton {
   padding: 10px 16px;
   border-radius: var(--radius-md);

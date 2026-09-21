@@ -183,6 +183,13 @@ export async function clearCheckedShoppingItems(): Promise<void> {
   }
 }
 
+export async function clearAllShoppingItems(): Promise<void> {
+  const response = await fetch("/api/shoppinglist/clear-all", { method: "POST" });
+  if (!response.ok) {
+    throw new Error(`Échec de la suppression (${response.status})`);
+  }
+}
+
 export async function generateShoppingList(start: string, end: string): Promise<void> {
   const response = await fetch("/api/shoppinglist/generate", {
     method: "POST",

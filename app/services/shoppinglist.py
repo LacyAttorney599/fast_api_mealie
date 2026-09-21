@@ -96,6 +96,18 @@ async def clear_checked() -> None:
             response.raise_for_status()
 
 
+async def clear_all() -> None:
+    async with get_client() as client:
+        list_id = await _get_or_create_list_id(client)
+        response = await client.get(f"/api/households/shopping/lists/{list_id}")
+        response.raise_for_status()
+        all_ids = [item["id"] for item in response.json()["listItems"]]
+
+        for item_id in all_ids:
+            response = await client.delete(f"/api/households/shopping/items/{item_id}")
+            response.raise_for_status()
+
+
 async def generate_from_mealplan(start: str, end: str) -> None:
     """Ajoute à la liste les ingrédients de chaque recette planifiée sur la
     période (une seule fois par recette même si planifiée plusieurs fois dans
