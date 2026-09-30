@@ -1,4 +1,6 @@
 import json
+import random
+import re
 from datetime import date, timedelta
 
 import httpx
@@ -6,33 +8,38 @@ import httpx
 from app.config import settings
 from app.models.mealplan import CreateMealPlanEntry, MealPlanEntry
 from app.services import mealie, mealplan
+from app.services.course_types import is_plannable
 
 MEAL_TYPES = ["lunch", "dinner"]
 
-PROMPT_TEMPLATE = """Tu planifies les repas d'une semaine à partir d'une liste de recettes existantes.
+# Limite le nombre de recettes envoyées au LLM pour garder un prompt
+# raisonnable sur les petits modèles (qwen2.5:3b, etc.).
+_MAX_RECIPES_IN_PROMPT = 40
 
-Recettes disponibles (🌱 = de saison ce mois-ci, à privilégier si pertinent ; [Catégorie] = type de plat pour la diversité) :
+PROMPT_TEMPLATE = """Tu planifies les repas d'une semaine. Réponds UNIQUEMENT avec du JSON valide.
+
+Recettes disponibles :
 {recipes}
 
-Créneaux à remplir (une recette par créneau) :
+Créneaux à remplir ({n_slots} au total) :
 {slots}
 
 Règles :
-- Utilise UNIQUEMENT les noms de recettes listés ci-dessus, exactement tels qu'écrits.
-- Remplis TOUS les créneaux listés.
-- Varie les recettes : évite de répéter la même recette plus de 2 fois dans la semaine si le nombre de recettes disponibles le permet.
-- Privilégie les recettes de saison quand plusieurs choix sont raisonnables, sans que ce soit une contrainte stricte.
-- Ne planifie jamais la même recette deux fois dans la même journée (déjeuner et dîner).
-- Évite de répéter la même catégorie [entre crochets] deux repas de suite sur le même créneau (ex : pas trois dîners "Soupes" d'affilée).
-- Sur la semaine, alterne les catégories : chaque type de plat ne devrait pas dépasser 3 occurrences au total.
+- Utilise UNIQUEMENT les noms listés ci-dessus, copiés à l'identique.
+- Remplis TOUS les créneaux.
+- Ne répète pas la même recette deux fois dans la même journée.
+- Varie les catégories [entre crochets] : évite la même catégorie deux repas de suite sur le même créneau.
+- Chaque recette maximum 2 fois dans la semaine.
 
-Réponds UNIQUEMENT avec un JSON de cette forme, sans texte autour :
-{{"assignments": [{{"date": "YYYY-MM-DD", "entryType": "lunch ou dinner", "recipe": "nom exact d'une recette ci-dessus"}}]}}
+Format de réponse (JSON uniquement, rien d'autre) :
+{{"assignments": [{{"date": "YYYY-MM-DD", "entry_type": "lunch", "recipe": "Nom exact"}}, ...]}}
+
+entry_type vaut "lunch" ou "dinner" uniquement.
 """
 
 
 async def _call_ollama(prompt: str) -> dict:
-    async with httpx.AsyncClient(base_url=settings.ollama_base_url, timeout=180) as client:
+    async with httpx.AsyncClient(base_url=settings.ollama_base_url, timeout=240) as client:
         response = await client.post(
             "/api/generate",
             json={
@@ -40,7 +47,10 @@ async def _call_ollama(prompt: str) -> dict:
                 "prompt": prompt,
                 "format": "json",
                 "stream": False,
-                "options": {"temperature": 0.4},
+                "options": {
+                    "temperature": 0.3,
+                    "num_ctx": 8192,
+                },
             },
         )
         response.raise_for_status()
@@ -65,14 +75,13 @@ def _empty_slots(start: str, end: str, existing: list[MealPlanEntry]) -> list[tu
 
 
 async def generate_plan(start: str, end: str) -> list[MealPlanEntry]:
-    """Remplit les créneaux vides de la période avec des recettes existantes,
-    choisies par le LLM en tenant compte de la saison et de la variété.
-    Ne touche jamais un créneau déjà rempli. Un nom de recette halluciné (hors
-    de la liste fournie) ou un créneau invalide dans la réponse du modèle est
-    simplement ignoré plutôt que de faire planter la génération.
-    """
-    recipes = await mealie.list_recipes_with_season()
-    if not recipes:
+    """Remplit les créneaux vides de la période avec des recettes choisies par
+    le LLM. Utilise list_recipe_summaries (1 seul appel API) plutôt que
+    list_recipes_with_season (N appels) pour éviter les timeouts sur la première
+    génération. Un nom halluciné ou un créneau invalide dans la réponse du
+    modèle est simplement ignoré."""
+    summaries = await mealie.list_recipe_summaries()
+    if not summaries:
         return []
 
     existing = await mealplan.list_entries(start, end)
@@ -80,25 +89,47 @@ async def generate_plan(start: str, end: str) -> list[MealPlanEntry]:
     if not slots:
         return []
 
-    recipes_by_name = {recipe.name: recipe for recipe in recipes}
-    recipe_lines = "\n".join(
-        f"- {'🌱 ' if recipe.in_season else ''}{recipe.name}"
-        + (f" [{recipe.category}]" if recipe.category else "")
-        for recipe in recipes
-    )
-    slot_lines = "\n".join(f"- {iso} ({meal_type})" for iso, meal_type in slots)
+    # Filtre les recettes non planifiables (desserts, accompagnements).
+    summaries = [r for r in summaries if is_plannable(r.tag)]
 
-    prompt = PROMPT_TEMPLATE.format(recipes=recipe_lines, slots=slot_lines)
+    # Échantillon aléatoire mais stable pour la semaine courante.
+    # On en prend suffisamment pour couvrir les créneaux avec de la variété.
+    available = list(summaries)
+    n_needed = min(_MAX_RECIPES_IN_PROMPT, max(len(slots) * 2, 20))
+    if len(available) > n_needed:
+        seed = int(date.fromisoformat(start).strftime("%Y%W"))
+        rng = random.Random(seed)
+        available = rng.sample(available, n_needed)
+    available.sort(key=lambda r: r.name)
+
+    recipes_by_name = {r.name: r for r in available}
+    recipe_lines = "\n".join(
+        f"- {r.name}" + (f" [{r.tag}]" if r.tag else "")
+        for r in available
+    )
+    slot_lines = "\n".join(f"- {iso} {meal_type}" for iso, meal_type in slots)
+
+    prompt = PROMPT_TEMPLATE.format(
+        recipes=recipe_lines,
+        slots=slot_lines,
+        n_slots=len(slots),
+    )
     data = await _call_ollama(prompt)
 
     created: list[MealPlanEntry] = []
     remaining_slots = set(slots)
     for assignment in data.get("assignments", []):
-        slot = (assignment.get("date"), assignment.get("entryType"))
+        # Accepte snake_case ("entry_type") et camelCase ("entryType")
+        entry_type = assignment.get("entry_type") or assignment.get("entryType")
+        slot = (assignment.get("date"), entry_type)
         if slot not in remaining_slots:
             continue
 
-        recipe = recipes_by_name.get(assignment.get("recipe"))
+        # Le LLM répète parfois le suffixe "[Catégorie]" qu'on a mis dans la
+        # liste — on le retire avant la lookup.
+        raw_name = assignment.get("recipe", "")
+        clean_name = re.sub(r"\s*\[.*?\]\s*$", "", raw_name).strip()
+        recipe = recipes_by_name.get(clean_name)
         if not recipe:
             continue
 

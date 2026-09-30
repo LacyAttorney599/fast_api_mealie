@@ -334,6 +334,24 @@ export async function fetchCurrentSeason(): Promise<CurrentSeason> {
   return response.json();
 }
 
+export type CourseType = "plat" | "entrée" | "dessert" | "accompagnement";
+
+export async function fetchCourseTypes(): Promise<Record<string, CourseType>> {
+  const response = await fetch("/api/course-types");
+  if (!response.ok) throw new Error(`Échec du chargement (${response.status})`);
+  return response.json();
+}
+
+export async function setCourseType(categoryName: string, courseType: CourseType | null): Promise<Record<string, CourseType>> {
+  const response = await fetch("/api/course-types", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ category_name: categoryName, course_type: courseType }),
+  });
+  if (!response.ok) throw new Error(`Échec de la mise à jour (${response.status})`);
+  return response.json();
+}
+
 export async function generateAiMealPlan(start: string, end: string): Promise<MealPlanEntry[]> {
   const response = await fetch("/api/mealplan/generate-ai", {
     method: "POST",

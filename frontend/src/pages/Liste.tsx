@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -26,6 +26,7 @@ export default function Liste() {
   const [newCookbookName, setNewCookbookName] = useState("");
   const [newCookbookMode, setNewCookbookMode] = useState<NewCookbookMode>("manual");
   const [newCookbookCategoryId, setNewCookbookCategoryId] = useState("");
+  const newCookbookPanelRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   const selectedCookbook = typeof filter === "object" ? filter.cookbook : null;
@@ -33,6 +34,17 @@ export default function Liste() {
   useEffect(() => {
     setPage(1);
   }, [search, filter]);
+
+  useEffect(() => {
+    if (!creatingCookbook) return;
+    function handleMouseDown(e: MouseEvent) {
+      if (newCookbookPanelRef.current && !newCookbookPanelRef.current.contains(e.target as Node)) {
+        resetNewCookbookForm();
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [creatingCookbook]);
 
   const { data: cookbooks } = useQuery({
     queryKey: ["cookbooks"],
@@ -147,12 +159,8 @@ export default function Liste() {
         <div className={styles.newCookbookWrapper}>
           {creatingCookbook ? (
             <div
+              ref={newCookbookPanelRef}
               className={styles.newCookbookPanel}
-              onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  resetNewCookbookForm();
-                }
-              }}
             >
               <input
                 autoFocus

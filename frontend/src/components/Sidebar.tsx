@@ -44,6 +44,16 @@ const navItems = [
     ),
     isActive: (pathname: string) => pathname.startsWith("/importer"),
   },
+  {
+    to: "/categories",
+    label: "Catégories",
+    icon: (
+      <>
+        <path d="M4 6h16M4 12h8M4 18h12" />
+      </>
+    ),
+    isActive: (pathname: string) => pathname.startsWith("/categories"),
+  },
 ];
 
 export default function Sidebar() {
