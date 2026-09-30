@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -13,12 +13,15 @@ import {
 } from "../lib/api";
 import styles from "./Liste.module.css";
 
+const PAGE_SIZE = 50;
+
 type Filter = "all" | "seasonal" | { cookbook: string };
 type NewCookbookMode = "manual" | "category";
 
 export default function Liste() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("seasonal");
+  const [page, setPage] = useState(1);
   const [creatingCookbook, setCreatingCookbook] = useState(false);
   const [newCookbookName, setNewCookbookName] = useState("");
   const [newCookbookMode, setNewCookbookMode] = useState<NewCookbookMode>("manual");
@@ -26,6 +29,10 @@ export default function Liste() {
   const queryClient = useQueryClient();
 
   const selectedCookbook = typeof filter === "object" ? filter.cookbook : null;
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filter]);
 
   const { data: cookbooks } = useQuery({
     queryKey: ["cookbooks"],
@@ -89,6 +96,8 @@ export default function Liste() {
   const seasonalSlugs = new Set(seasonalRecipes?.filter((r) => r.in_season).map((r) => r.slug));
 
   const recipes = filter === "seasonal" ? allRecipes?.filter((r) => seasonalSlugs.has(r.slug)) : allRecipes;
+  const totalPages = Math.ceil((recipes?.length ?? 0) / PAGE_SIZE);
+  const paginatedRecipes = recipes?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const subtitleSuffix =
     filter === "seasonal" ? " de saison" : activeCookbook ? ` dans ${activeCookbook.name}` : " dans votre livre";
@@ -227,7 +236,7 @@ export default function Liste() {
 
       <div className={styles.scrollArea}>
         <div className={styles.grid}>
-          {recipes?.map((recipe) => {
+          {paginatedRecipes?.map((recipe) => {
             const hasPhoto = Boolean(recipe.image_url);
             return (
               <div key={recipe.slug} className={styles.card}>
@@ -294,6 +303,25 @@ export default function Liste() {
             );
           })}
         </div>
+        {totalPages > 1 && (
+          <div className={styles.pagination}>
+            <button
+              className={styles.paginationBtn}
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              ← Précédent
+            </button>
+            <span className={styles.paginationInfo}>Page {page} / {totalPages}</span>
+            <button
+              className={styles.paginationBtn}
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Suivant →
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

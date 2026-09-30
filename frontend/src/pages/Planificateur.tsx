@@ -27,45 +27,74 @@ function findEntry(entries: MealPlanEntry[] | undefined, date: string, mealType:
 interface RecipeOption {
   slug: string;
   name: string;
+  tag: string | null;
+  image_url: string | null;
+  color: string;
   seasonal: boolean;
 }
 
-function RecipeSearchPicker({
+function RecipePickerModal({
   recipes,
+  slotLabel,
   onSelect,
   onCancel,
 }: {
   recipes: RecipeOption[];
+  slotLabel: string;
   onSelect: (slug: string) => void;
   onCancel: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const filtered = recipes.filter((r) => r.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8);
+  const filtered = recipes.filter((r) => r.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div
-      className={styles.slotPicker}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-          onCancel();
-        }
-      }}
-    >
-      <input
-        autoFocus
-        className={styles.slotPickerInput}
-        placeholder="Rechercher une recette…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => e.key === "Escape" && onCancel()}
-      />
-      <div className={styles.slotPickerList}>
-        {filtered.map((recipe) => (
-          <button key={recipe.slug} className={styles.slotPickerOption} onClick={() => onSelect(recipe.slug)}>
-            {recipe.seasonal ? `🌱 ${recipe.name}` : recipe.name}
-          </button>
-        ))}
-        {filtered.length === 0 && <span className={styles.slotPickerEmpty}>Aucun résultat</span>}
+    <div className={styles.modalOverlay} onClick={onCancel} onKeyDown={(e) => e.key === "Escape" && onCancel()}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <div>
+            <span className={styles.modalTitle}>Choisir une recette</span>
+            <span className={styles.modalSlot}>{slotLabel}</span>
+          </div>
+          <button className={styles.modalClose} onClick={onCancel}>×</button>
+        </div>
+        <div className={styles.modalSearchWrapper}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A7F6E" strokeWidth={2}>
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            autoFocus
+            className={styles.modalSearchInput}
+            placeholder="Rechercher une recette…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && onCancel()}
+          />
+        </div>
+        <div className={styles.modalList}>
+          {filtered.map((recipe) => (
+            <button key={recipe.slug} className={styles.modalItem} onClick={() => onSelect(recipe.slug)}>
+              <div
+                className={styles.modalItemThumb}
+                style={{ background: recipe.image_url ? undefined : recipe.color }}
+              >
+                {recipe.image_url
+                  ? <img src={recipe.image_url} alt="" className={styles.modalItemThumbImg} />
+                  : null}
+              </div>
+              <div className={styles.modalItemInfo}>
+                <span className={styles.modalItemName}>{recipe.name}</span>
+                <span className={styles.modalItemMeta}>
+                  {recipe.seasonal && <span className={styles.modalSeasonBadge}>🌱 De saison</span>}
+                  {recipe.tag ?? "Sans catégorie"}
+                </span>
+              </div>
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <span className={styles.modalEmpty}>Aucune recette ne correspond à votre recherche.</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -105,9 +134,11 @@ export default function Planificateur() {
   });
 
   const seasonalSlugs = new Set(seasonalRecipes?.filter((r) => r.in_season).map((r) => r.slug));
-  const sortedRecipes = recipes
-    ? [...recipes].sort((a, b) => Number(seasonalSlugs.has(b.slug)) - Number(seasonalSlugs.has(a.slug)))
-    : recipes;
+  const sortedRecipes: RecipeOption[] | undefined = recipes
+    ? [...recipes]
+        .sort((a, b) => Number(seasonalSlugs.has(b.slug)) - Number(seasonalSlugs.has(a.slug)))
+        .map((r) => ({ slug: r.slug, name: r.name, tag: r.tag, image_url: r.image_url, color: r.color, seasonal: seasonalSlugs.has(r.slug) }))
+    : undefined;
 
   const mealplanKey = ["mealplan", isoStart, isoEnd];
 
@@ -158,29 +189,27 @@ export default function Planificateur() {
       );
     }
 
-    if (isAdding) {
-      return (
-        <RecipeSearchPicker
-          recipes={(sortedRecipes ?? []).map((recipe) => ({
-            slug: recipe.slug,
-            name: recipe.name,
-            seasonal: seasonalSlugs.has(recipe.slug),
-          }))}
-          onSelect={(recipeSlug) => createMutation.mutate({ date, mealType, recipeSlug })}
-          onCancel={() => setAddingSlot(null)}
-        />
-      );
-    }
-
     return (
-      <button className={styles.emptySlot} onClick={() => setAddingSlot({ date, mealType })}>
+      <button className={isAdding ? styles.emptySlotActive : styles.emptySlot} onClick={() => setAddingSlot({ date, mealType })}>
         + Ajouter
       </button>
     );
   }
 
+  const addingSlotLabel = addingSlot
+    ? `${addingSlot.mealType === "lunch" ? "Déjeuner" : "Dîner"} · ${days.find((d) => d.iso === addingSlot.date)?.label ?? addingSlot.date}`
+    : "";
+
   return (
     <>
+      {addingSlot && sortedRecipes && (
+        <RecipePickerModal
+          recipes={sortedRecipes}
+          slotLabel={addingSlotLabel}
+          onSelect={(recipeSlug) => createMutation.mutate({ date: addingSlot.date, mealType: addingSlot.mealType, recipeSlug })}
+          onCancel={() => setAddingSlot(null)}
+        />
+      )}
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Planificateur</h1>

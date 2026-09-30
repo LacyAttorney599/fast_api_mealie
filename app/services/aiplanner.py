@@ -11,7 +11,7 @@ MEAL_TYPES = ["lunch", "dinner"]
 
 PROMPT_TEMPLATE = """Tu planifies les repas d'une semaine à partir d'une liste de recettes existantes.
 
-Recettes disponibles (🌱 = de saison ce mois-ci, à privilégier si pertinent) :
+Recettes disponibles (🌱 = de saison ce mois-ci, à privilégier si pertinent ; [Catégorie] = type de plat pour la diversité) :
 {recipes}
 
 Créneaux à remplir (une recette par créneau) :
@@ -22,6 +22,9 @@ Règles :
 - Remplis TOUS les créneaux listés.
 - Varie les recettes : évite de répéter la même recette plus de 2 fois dans la semaine si le nombre de recettes disponibles le permet.
 - Privilégie les recettes de saison quand plusieurs choix sont raisonnables, sans que ce soit une contrainte stricte.
+- Ne planifie jamais la même recette deux fois dans la même journée (déjeuner et dîner).
+- Évite de répéter la même catégorie [entre crochets] deux repas de suite sur le même créneau (ex : pas trois dîners "Soupes" d'affilée).
+- Sur la semaine, alterne les catégories : chaque type de plat ne devrait pas dépasser 3 occurrences au total.
 
 Réponds UNIQUEMENT avec un JSON de cette forme, sans texte autour :
 {{"assignments": [{{"date": "YYYY-MM-DD", "entryType": "lunch ou dinner", "recipe": "nom exact d'une recette ci-dessus"}}]}}
@@ -78,7 +81,11 @@ async def generate_plan(start: str, end: str) -> list[MealPlanEntry]:
         return []
 
     recipes_by_name = {recipe.name: recipe for recipe in recipes}
-    recipe_lines = "\n".join(f"- {'🌱 ' if recipe.in_season else ''}{recipe.name}" for recipe in recipes)
+    recipe_lines = "\n".join(
+        f"- {'🌱 ' if recipe.in_season else ''}{recipe.name}"
+        + (f" [{recipe.category}]" if recipe.category else "")
+        for recipe in recipes
+    )
     slot_lines = "\n".join(f"- {iso} ({meal_type})" for iso, meal_type in slots)
 
     prompt = PROMPT_TEMPLATE.format(recipes=recipe_lines, slots=slot_lines)

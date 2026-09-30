@@ -3,6 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     mealie_base_url: str = "http://mealie:9000"
+    mealie_fallback_url: str = "http://172.25.0.1:9000"
     mealie_api_token: str = ""
 
     ollama_base_url: str = "http://ollama:11434"

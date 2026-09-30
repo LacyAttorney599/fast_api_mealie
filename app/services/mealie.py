@@ -6,7 +6,6 @@ from datetime import date
 
 import httpx
 
-from app.config import settings
 from app.models.recipe import (
     Cookbook,
     Ingredient,
@@ -18,6 +17,7 @@ from app.models.recipe import (
     SeasonalRecipe,
 )
 from app.services import seasons
+from app.services.mealie_client import get_active_base_url as _base_url
 from app.services.mealie_client import get_client as _client
 
 # Mealie n'a pas de notion de couleur par recette : ces teintes reprennent
@@ -31,13 +31,13 @@ _PLACEHOLDER_COLORS = [
 
 
 async def search_recipes(query: str = "", cookbook: str = "") -> list[dict]:
-    params = {}
+    params: dict = {"perPage": 9999}
     if query:
         params["search"] = query
     if cookbook:
         params["cookbook"] = cookbook
     async with _client() as client:
-        response = await client.get("/api/recipes", params=params or None)
+        response = await client.get("/api/recipes", params=params)
         response.raise_for_status()
         return response.json().get("items", [])
 
@@ -160,13 +160,13 @@ def _placeholder_color(slug: str) -> str:
     return _PLACEHOLDER_COLORS[zlib.crc32(slug.encode()) % len(_PLACEHOLDER_COLORS)]
 
 
-def _to_summary(item: dict, favorite_ids: set[str]) -> RecipeSummary:
+def _to_summary(item: dict, favorite_ids: set[str], base_url: str) -> RecipeSummary:
     category = item["recipeCategory"][0]["name"] if item["recipeCategory"] else None
     tag = category or (item["tags"][0]["name"] if item["tags"] else None)
 
     image_url = None
     if item["image"]:
-        image_url = f"{settings.mealie_base_url}/api/media/recipes/{item['id']}/images/min-original.webp"
+        image_url = f"{base_url}/api/media/recipes/{item['id']}/images/min-original.webp"
 
     return RecipeSummary(
         slug=item["slug"],
@@ -182,7 +182,8 @@ def _to_summary(item: dict, favorite_ids: set[str]) -> RecipeSummary:
 async def list_recipe_summaries(query: str = "", cookbook: str = "") -> list[RecipeSummary]:
     items = await search_recipes(query, cookbook)
     favorite_ids = await list_favorite_recipe_ids()
-    return [_to_summary(item, favorite_ids) for item in items]
+    base_url = await _base_url()
+    return [_to_summary(item, favorite_ids, base_url) for item in items]
 
 
 _self_user_id: str | None = None
@@ -247,7 +248,7 @@ async def get_recipe_detail(slug: str) -> RecipeDetail:
 
     image_url = None
     if item["image"]:
-        image_url = f"{settings.mealie_base_url}/api/media/recipes/{item['id']}/images/original.webp"
+        image_url = f"{await _base_url()}/api/media/recipes/{item['id']}/images/original.webp"
 
     all_tags = [c["name"] for c in item["recipeCategory"]] + [t["name"] for t in item["tags"]]
     tags = list(dict.fromkeys(all_tags))  # dédoublonne en gardant l'ordre (catégorie et tag peuvent se recouper)
@@ -290,7 +291,7 @@ async def _compute_recipes_with_season() -> list[SeasonalRecipe]:
     async def check(summary: RecipeSummary) -> SeasonalRecipe:
         async with semaphore:
             detail = await get_recipe_detail(summary.slug)
-        return SeasonalRecipe(slug=summary.slug, name=summary.name, in_season=detail.in_season)
+        return SeasonalRecipe(slug=summary.slug, name=summary.name, in_season=detail.in_season, category=summary.tag)
 
     return list(await asyncio.gather(*(check(s) for s in summaries)))
 
