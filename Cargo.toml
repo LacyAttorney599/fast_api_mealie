@@ -1,0 +1,55 @@
+[package]
+name = "ma-cuisine"
+version = "0.1.0"
+edition = "2024"
+description = "Interface web (Rust/WebAssembly) au-dessus de Mealie : recettes, planning, courses, imports"
+publish = false
+
+[dependencies]
+leptos = { version = "0.8.22", features = ["csr"] }
+leptos_router = "0.8.17"
+gloo-net = { version = "0.7.0", default-features = false, features = ["http", "json"] }
+gloo-timers = { version = "0.4.0", features = ["futures"] }
+http = "1.3"
+wasm-bindgen = "0.2.129"
+wasm-bindgen-futures = "0.4.79"
+js-sys = "0.3.106"
+web-sys = { version = "0.3.106", features = [
+    "AbortController",
+    "AbortSignal",
+    "Blob",
+    "CanvasRenderingContext2d",
+    "DataTransfer",
+    "Document",
+    "DragEvent",
+    "Element",
+    "File",
+    "FileList",
+    "History",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "HtmlInputElement",
+    "ImageBitmap",
+    "ImageBitmapOptions",
+    "ImageData",
+    "ImageOrientation",
+    "Storage",
+    "Window",
+] }
+console_error_panic_hook = "0.1.7"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "std", "wasmbind"] }
+crc32fast = "1.5.3"
+futures = "0.3.34"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+indexmap = { version = "2.14.2", features = ["serde"] }
+regex = "1.13.1"
+serde = { version = "1.0.229", features = ["derive", "rc"] }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+
+[profile.release]
+# Le prétraitement des photos (OCR) tourne dans le navigateur : on optimise
+# pour la vitesse plutôt que pour la taille du .wasm (servi en local, compressé).
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"

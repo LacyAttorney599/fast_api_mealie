@@ -1,0 +1,30 @@
+# Routes communes à la production (Caddyfile) et au développement
+# (Caddyfile.dev) : l'application n'a pas de backend propre, le navigateur
+# parle à Mealie et à Ollama à travers ce proxy.
+
+# API Mealie. Le token d'API est ajouté ici : il ne passe jamais par le
+# navigateur. Si l'URL principale ne répond pas, bascule sur l'URL de secours.
+handle /api/* {
+	reverse_proxy {$MEALIE_BASE_URL:http://mealie:9000} {$MEALIE_FALLBACK_URL:http://172.25.0.1:9000} {
+		header_up Host {upstream_hostport}
+		header_up Authorization "Bearer {$MEALIE_API_TOKEN}"
+		lb_policy first
+		lb_try_duration 5s
+		fail_duration 30s
+	}
+}
+
+# Ollama (structuration des photos, génération du planning). Sans en-tête
+# Origin, Ollama n'applique pas son contrôle CORS aux requêtes du navigateur.
+handle_path /ollama/* {
+	reverse_proxy {$OLLAMA_BASE_URL:http://ollama:11434} {
+		header_up Host {upstream_hostport}
+		header_up -Origin
+	}
+}
+
+# Réglages lus par l'application au démarrage.
+handle /config.json {
+	header Content-Type application/json
+	respond `{"ollamaModel": "{$OLLAMA_MODEL:qwen2.5:3b}"}`
+}

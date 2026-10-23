@@ -1,0 +1,9 @@
+[build]
+target = "index.html"
+dist = "dist"
+
+# En développement, `trunk serve` ne sert que l'application : c'est Caddy
+# (deploy/Caddyfile.dev) qui l'expose avec /api et /ollama, comme en production.
+[serve]
+addresses = ["127.0.0.1"]
+port = 8080

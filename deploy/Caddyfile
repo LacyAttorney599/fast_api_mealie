@@ -1,0 +1,16 @@
+{
+	admin off
+}
+
+:8000 {
+	encode zstd gzip
+
+	import backends.caddy
+
+	# Application (dist/ de `trunk build`) ; les routes du SPA renvoient index.html.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

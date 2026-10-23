@@ -1,5 +1,7 @@
 # Contexte projet : mini-appli d'ajout de recettes vers Mealie
 
+> **Note (2026-10-23)** : ce document décrit la première mini-appli (FastAPI + HTMX). Elle a d'abord été fusionnée dans la refonte du frontend (voir `plan.md`), puis tout le projet a été réécrit en Rust/WebAssembly, sans backend. Le flux d'import photo reste le même, mais tout se passe dans le navigateur : l'OCR Tesseract y tourne (tesseract.js, même modèle français) et Ollama est appelé via le reverse proxy Caddy, qui détient aussi le token Mealie. Il n'y a donc plus d'appel `POST /import/photo`.
+
 ## Objectif
 
 Construire une petite application web self-hosted qui simplifie l'ajout de recettes dans Mealie (gestionnaire de recettes déjà déployé), avec deux modes de saisie :

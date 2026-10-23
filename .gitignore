@@ -1,5 +1,8 @@
-__pycache__/
-*.pyc
+/target/
+/dist/
+# Téléchargés par scripts/fetch-tesseract.sh
+/vendor/tesseract/*
+!/vendor/tesseract/README.md
 .env
 .venv/
 .claude/

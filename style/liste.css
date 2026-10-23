@@ -1,0 +1,318 @@
+/* Styles de Liste : classes préfixées « liste- » (ex-CSS module). */
+.liste-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.liste-title {
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.liste-subtitle {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.liste-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  width: 280px;
+}
+
+.liste-searchInput {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex-grow: 1;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.liste-searchInput::placeholder {
+  color: var(--color-text-faint);
+}
+
+.liste-error,
+.liste-empty {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.liste-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.liste-filter,
+.liste-filterActive {
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.liste-filter {
+  border: 1px solid var(--color-border);
+  background: none;
+  color: var(--color-text-strong);
+}
+
+.liste-newCookbookWrapper {
+  position: relative;
+}
+
+.liste-newCookbookInput {
+  padding: 8px 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-accent);
+  background: var(--color-surface);
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.liste-newCookbookPanel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 280px;
+  padding: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+
+.liste-newCookbookModeRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.liste-newCookbookModeOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-text);
+}
+
+.liste-newCookbookCategorySelect {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 13px;
+}
+
+.liste-newCookbookActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.liste-newCookbookCancel {
+  padding: 7px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: none;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.liste-newCookbookConfirm {
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+.liste-newCookbookConfirm:disabled {
+  opacity: 0.5;
+}
+
+.liste-filterActive {
+  border: none;
+  background: var(--color-accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.liste-scrollArea {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+.liste-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.liste-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.liste-cardImage {
+  display: block;
+  height: 140px;
+  position: relative;
+}
+
+.liste-cardIcon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+
+.liste-cardPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.liste-noPhoto {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #efe9de;
+}
+
+.liste-noPhoto span {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.liste-favoriteButton {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.liste-seasonBadge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-sage);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.liste-cardBody {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.liste-cardName {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.liste-cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+
+.liste-suggestButton {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  padding: 2px 0 0;
+}
+
+.liste-removeFromBookButton {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-error);
+  background: none;
+  border: none;
+  padding: 2px 0 0;
+}
+
+.liste-removeFromBookButton:disabled {
+  opacity: 0.5;
+}
+
+.liste-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0 8px;
+}
+
+.liste-paginationBtn {
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.liste-paginationBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.liste-paginationInfo {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}

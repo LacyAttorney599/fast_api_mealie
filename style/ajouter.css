@@ -1,0 +1,218 @@
+/* Styles de Ajouter : classes préfixées « ajouter- » (ex-CSS module). */
+.ajouter-title {
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.ajouter-subtitle {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.ajouter-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--color-sidebar-bg);
+  padding: 5px;
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.ajouter-tab,
+.ajouter-tabActive {
+  padding: 9px 18px;
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.ajouter-tabActive {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.ajouter-tab {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.ajouter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow: hidden;
+  flex-grow: 1;
+}
+
+.ajouter-topRow {
+  display: flex;
+  gap: 16px;
+}
+
+.ajouter-field {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ajouter-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.ajouter-input {
+  padding: 11px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  background: var(--color-surface);
+}
+
+.ajouter-urlRow {
+  display: flex;
+  gap: 8px;
+}
+
+.ajouter-urlRow .ajouter-input {
+  flex-grow: 1;
+}
+
+.ajouter-extractButton {
+  padding: 0 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.ajouter-columns {
+  display: flex;
+  gap: 32px;
+  flex-grow: 1;
+  overflow: auto;
+}
+
+.ajouter-ingredientsColumn {
+  flex: 1.1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ajouter-stepsColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.ajouter-columnHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ajouter-addLink {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+}
+
+.ajouter-ingredientsHead {
+  display: grid;
+  grid-template-columns: 70px 70px 1fr;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-faint);
+  padding: 0 2px;
+}
+
+.ajouter-ingredientRow {
+  display: grid;
+  grid-template-columns: 70px 70px 1fr;
+  gap: 8px;
+}
+
+.ajouter-smallInput {
+  padding: 9px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  background: var(--color-surface);
+  width: 100%;
+}
+
+.ajouter-stepRow {
+  display: flex;
+  gap: 10px;
+}
+
+.ajouter-stepNumber {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-sidebar-bg);
+  color: var(--color-text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ajouter-textarea {
+  flex-grow: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  background: var(--color-surface);
+  resize: none;
+  height: 44px;
+}
+
+.ajouter-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+
+.ajouter-cancelButton {
+  padding: 11px 20px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.ajouter-saveButton {
+  padding: 11px 20px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.ajouter-saveButton:disabled {
+  opacity: 0.6;
+}
+
+.ajouter-error {
+  font-size: 13px;
+  color: var(--color-error);
+}

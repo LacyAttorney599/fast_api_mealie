@@ -1,0 +1,16 @@
+# Développement : `trunk serve` (port 8080) sert l'application avec
+# rechargement automatique ; ce proxy l'expose sur http://localhost:8000 avec
+# les mêmes routes /api et /ollama qu'en production.
+#
+#   caddy run --config deploy/Caddyfile.dev --envfile .env
+{
+	admin off
+}
+
+:8000 {
+	import backends.caddy
+
+	handle {
+		reverse_proxy 127.0.0.1:8080
+	}
+}

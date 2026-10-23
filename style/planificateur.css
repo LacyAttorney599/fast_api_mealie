@@ -1,0 +1,405 @@
+/* Styles de Planificateur : classes préfixées « planificateur- » (ex-CSS module). */
+.planificateur-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.planificateur-title {
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.planificateur-subtitle {
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: 14px;
+}
+
+.planificateur-seasonHint {
+  margin: 6px 0 0;
+  color: var(--color-sage-text);
+  font-size: 12.5px;
+}
+
+.planificateur-weekNav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.planificateur-navButton {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planificateur-weekLabel {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.planificateur-grid {
+  display: grid;
+  grid-template-columns: 90px repeat(7, 1fr);
+  grid-template-rows: 36px 1fr 1fr;
+  gap: 10px;
+  height: 600px;
+}
+
+.planificateur-dayLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-text-strong);
+}
+
+.planificateur-rowLabel {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-faint);
+}
+
+.planificateur-filledSlot {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 10px 12px;
+  box-sizing: border-box;
+}
+
+.planificateur-filledSlotHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.planificateur-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.planificateur-removeButton {
+  border: none;
+  background: none;
+  color: var(--color-text-faint);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0;
+}
+
+.planificateur-removeButton:hover {
+  color: var(--color-error);
+}
+
+.planificateur-slotName {
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.planificateur-emptySlot {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--color-border-dashed);
+  border-radius: 12px;
+  background: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-faint);
+  box-sizing: border-box;
+}
+
+.planificateur-emptySlotActive {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--color-accent);
+  border-radius: 12px;
+  background: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-accent);
+  box-sizing: border-box;
+}
+
+.planificateur-slotPicker {
+  position: relative;
+  height: 100%;
+}
+
+.planificateur-slotPickerInput {
+  width: 100%;
+  height: 100%;
+  border: 1.5px solid var(--color-accent);
+  border-radius: 12px;
+  background: var(--color-surface);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.planificateur-slotPickerList {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  z-index: 20;
+}
+
+.planificateur-slotPickerOption {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text);
+  border: none;
+  border-bottom: 1px solid var(--color-border-soft);
+  background: none;
+}
+
+.planificateur-slotPickerOption:last-child {
+  border-bottom: none;
+}
+
+.planificateur-slotPickerOption:hover {
+  background: var(--color-sidebar-bg);
+}
+
+.planificateur-slotPickerEmpty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--color-text-faint);
+}
+
+.planificateur-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.planificateur-generateButton {
+  padding: 12px 22px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.planificateur-generateAiButton {
+  padding: 12px 22px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 13.5px;
+}
+
+.planificateur-generateAiButton:disabled {
+  opacity: 0.6;
+}
+
+.planificateur-errorText {
+  font-size: 13px;
+  color: var(--color-error);
+  text-align: right;
+}
+
+/* ── Modale de sélection de recette ── */
+
+.planificateur-modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planificateur-modal {
+  width: 500px;
+  max-height: 72vh;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.planificateur-modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.planificateur-modalTitle {
+  font-size: 16px;
+  font-weight: 700;
+  display: block;
+}
+
+.planificateur-modalSlot {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  display: block;
+}
+
+.planificateur-modalClose {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  font-size: 20px;
+  color: var(--color-text-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.planificateur-modalClose:hover {
+  background: var(--color-border);
+}
+
+.planificateur-modalSearchWrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.planificateur-modalSearchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.planificateur-modalSearchInput::placeholder {
+  color: var(--color-text-faint);
+}
+
+.planificateur-modalList {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.planificateur-modalItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border-soft);
+  text-align: left;
+  cursor: pointer;
+}
+
+.planificateur-modalItem:last-child {
+  border-bottom: none;
+}
+
+.planificateur-modalItem:hover {
+  background: var(--color-sidebar-bg);
+}
+
+.planificateur-modalItemThumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.planificateur-modalItemThumbImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.planificateur-modalItemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.planificateur-modalItemName {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.planificateur-modalItemMeta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.planificateur-modalSeasonBadge {
+  color: var(--color-sage-text);
+  font-weight: 600;
+}
+
+.planificateur-modalEmpty {
+  display: block;
+  padding: 24px 16px;
+  font-size: 13px;
+  color: var(--color-text-faint);
+  text-align: center;
+}

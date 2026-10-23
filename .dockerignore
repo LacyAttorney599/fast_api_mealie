@@ -1,0 +1,6 @@
+.git/
+.venv/
+.env
+target/
+dist/
+tests/
