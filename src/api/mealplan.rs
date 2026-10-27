@@ -32,20 +32,48 @@ fn to_entry(item: &Value) -> Result<MealPlanEntry, ApiError> {
     })
 }
 
-pub async fn list_entries(start: &str, end: &str) -> Result<Vec<MealPlanEntry>, ApiError> {
-    let data = send_json(http::get("/api/households/mealplans").query([
+async fn fetch_period(start: &str, end: &str) -> Result<Value, ApiError> {
+    send_json(http::get("/api/households/mealplans").query([
         ("start_date", start),
         ("end_date", end),
         ("perPage", "100"),
     ]))
-    .await?;
+    .await
+}
+
+pub async fn list_entries(start: &str, end: &str) -> Result<Vec<MealPlanEntry>, ApiError> {
+    let data = fetch_period(start, end).await?;
     py::list(py::at(&data, "items")?)?
         .iter()
         .map(to_entry)
         .collect()
 }
 
-pub async fn create_entry(date: &str, entry_type: &str, recipe_slug: &str) -> Result<MealPlanEntry, ApiError> {
+/// Identifiants des recettes planifiées, une seule fois chacune, dans l'ordre
+/// du planning (les entrées sans recette sont ignorées).
+fn planned_recipe_ids(data: &Value) -> Result<Vec<String>, ApiError> {
+    let mut ids: Vec<String> = Vec::new();
+    for item in py::list(py::at(data, "items")?)? {
+        let recipe_id = py::get(item, "recipeId")?;
+        if py::truthy(recipe_id) {
+            let recipe_id = py::fstr(recipe_id);
+            if !ids.contains(&recipe_id) {
+                ids.push(recipe_id);
+            }
+        }
+    }
+    Ok(ids)
+}
+
+pub async fn list_recipe_ids(start: &str, end: &str) -> Result<Vec<String>, ApiError> {
+    planned_recipe_ids(&fetch_period(start, end).await?)
+}
+
+pub async fn create_entry(
+    date: &str,
+    entry_type: &str,
+    recipe_slug: &str,
+) -> Result<MealPlanEntry, ApiError> {
     let recipe = send_json(http::get(&format!("/api/recipes/{recipe_slug}"))).await?;
     let recipe_id = py::at(&recipe, "id")?;
 
@@ -58,7 +86,10 @@ pub async fn create_entry(date: &str, entry_type: &str, recipe_slug: &str) -> Re
 }
 
 pub async fn delete_entry(entry_id: i64) -> Result<(), ApiError> {
-    send(http::delete(&format!("/api/households/mealplans/{entry_id}"))).await?;
+    send(http::delete(&format!(
+        "/api/households/mealplans/{entry_id}"
+    )))
+    .await?;
     Ok(())
 }
 
@@ -81,6 +112,18 @@ mod tests {
             "recipe": {"name": "Soupe", "slug": "soupe"},
         }))
         .unwrap();
-        assert_eq!((entry.name.as_str(), entry.recipe_slug.as_deref()), ("Soupe", Some("soupe")));
+        assert_eq!(
+            (entry.name.as_str(), entry.recipe_slug.as_deref()),
+            ("Soupe", Some("soupe"))
+        );
+    }
+
+    #[test]
+    fn planned_recipes_are_listed_once_in_plan_order() {
+        let data = json!({"items": [
+            {"recipeId": "r2"}, {"recipeId": null, "title": "Restes"}, {"recipeId": "r1"},
+            {"recipeId": "r2"}, {"recipeId": ""},
+        ]});
+        assert_eq!(planned_recipe_ids(&data).unwrap(), ["r2", "r1"]);
     }
 }

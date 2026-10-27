@@ -121,9 +121,7 @@ pub async fn get_shopping_list() -> Result<ShoppingList, ApiError> {
     })
 }
 
-pub async fn toggle_item(item_id: &str,
-    checked: bool,
-) -> Result<(), ApiError> {
+pub async fn toggle_item(item_id: &str, checked: bool) -> Result<(), ApiError> {
     let path = format!("/api/households/shopping/items/{item_id}");
     let mut item = send_json(http::get(&path)).await?;
     let Value::Object(map) = &mut item else {
@@ -146,9 +144,14 @@ pub async fn add_item(text: &str) -> Result<(), ApiError> {
     Ok(())
 }
 
-/// Supprime un à un les articles de la liste retenus par `keep`.
-async fn delete_items(keep: impl Fn(&Value) -> Result<bool, ApiError>,
-) -> Result<(), ApiError> {
+/// Articles supprimés par requête : l'URL (un paramètre `ids` par article)
+/// reste courte même pour une longue liste.
+const DELETE_BATCH: usize = 100;
+
+/// Supprime les articles de la liste retenus par `keep`, par lots (une liste
+/// de plusieurs centaines d'articles se vide en quelques requêtes). Mealie
+/// retire aussi les recettes dont plus aucun article ne reste.
+async fn delete_items(keep: impl Fn(&Value) -> Result<bool, ApiError>) -> Result<(), ApiError> {
     let list_id = get_or_create_list_id().await?;
     let data = send_json(http::get(&format!(
         "/api/households/shopping/lists/{}",
@@ -162,8 +165,12 @@ async fn delete_items(keep: impl Fn(&Value) -> Result<bool, ApiError>,
         }
     }
 
-    for item_id in item_ids {
-        send(http::delete(&format!("/api/households/shopping/items/{item_id}"))).await?;
+    for batch in item_ids.chunks(DELETE_BATCH) {
+        send(
+            http::delete("/api/households/shopping/items")
+                .query(batch.iter().map(|id| ("ids", id))),
+        )
+        .await?;
     }
     Ok(())
 }
@@ -176,42 +183,41 @@ pub async fn clear_all() -> Result<(), ApiError> {
     delete_items(|_| Ok(true)).await
 }
 
+/// Recettes du planning à ajouter : celles que la liste ne contient pas déjà.
+fn recipes_to_add(planned: Vec<String>, already_added: &HashSet<String>) -> Vec<Value> {
+    planned
+        .into_iter()
+        .filter(|recipe_id| !already_added.contains(recipe_id))
+        .map(|recipe_id| json!({"recipeId": recipe_id}))
+        .collect()
+}
+
 /// Ajoute à la liste les ingrédients de chaque recette planifiée sur la
 /// période (une seule fois par recette même si planifiée plusieurs fois dans
 /// la semaine). Mealie fusionne lui-même les quantités des ingrédients déjà
 /// présents dans la liste, donc pas de logique d'agrégation à réécrire ici.
-pub async fn generate_from_mealplan(start: &str,
-    end: &str,
-) -> Result<(), ApiError> {
-    let entries = mealplan::list_entries(start, end).await?;
-    let mut recipe_slugs: Vec<&str> = Vec::new();
-    for slug in entries
-        .iter()
-        .filter_map(|entry| entry.recipe_slug.as_deref())
-    {
-        if !slug.is_empty() && !recipe_slugs.contains(&slug) {
-            recipe_slugs.push(slug);
-        }
-    }
+///
+/// Toutes les recettes partent en une seule requête : recette par recette
+/// (ancien point d'accès, déclaré obsolète par Mealie), une semaine prenait
+/// plus d'une minute, chaque ajout ralentissant à mesure que la liste grossit.
+pub async fn generate_from_mealplan(start: &str, end: &str) -> Result<(), ApiError> {
+    let planned = mealplan::list_recipe_ids(start, end).await?;
 
     let list_id = py::fstr(&get_or_create_list_id().await?);
-
-    let list = send_json(http::get(&format!("/api/households/shopping/lists/{list_id}"))).await?;
-    let already_added = recipe_reference_ids(&list)?;
-
-    for slug in recipe_slugs {
-        let recipe = send_json(http::get(&format!("/api/recipes/{slug}"))).await?;
-        let recipe_id = py::fstr(py::at(&recipe, "id")?);
-        if already_added.contains(&recipe_id) {
-            continue;
-        }
-
-        send_with(
-            http::post(&format!("/api/households/shopping/lists/{list_id}/recipe/{recipe_id}")),
-            &json!({}),
-        )
-        .await?;
+    let list = send_json(http::get(&format!(
+        "/api/households/shopping/lists/{list_id}"
+    )))
+    .await?;
+    let to_add = recipes_to_add(planned, &recipe_reference_ids(&list)?);
+    if to_add.is_empty() {
+        return Ok(());
     }
+
+    send_with(
+        http::post(&format!("/api/households/shopping/lists/{list_id}/recipe")),
+        &to_add,
+    )
+    .await?;
     Ok(())
 }
 
@@ -255,6 +261,16 @@ mod tests {
         assert_eq!(
             (parsed.food.as_str(), parsed.category.as_str()),
             ("Pain", "Autres")
+        );
+    }
+
+    #[test]
+    fn only_recipes_missing_from_the_list_are_added() {
+        let list = json!({"recipeReferences": [{"recipeId": "r2", "recipeQuantity": 1.0}]});
+        let planned = vec!["r1".to_owned(), "r2".to_owned(), "r3".to_owned()];
+        assert_eq!(
+            recipes_to_add(planned, &recipe_reference_ids(&list).unwrap()),
+            vec![json!({"recipeId": "r1"}), json!({"recipeId": "r3"})]
         );
     }
 }

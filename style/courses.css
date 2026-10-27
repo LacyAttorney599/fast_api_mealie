@@ -209,3 +209,15 @@
   font-weight: 600;
   font-size: 13.5px;
 }
+
+.courses-generateInline:disabled,
+.courses-generateButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.courses-errorText {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--color-error);
+}

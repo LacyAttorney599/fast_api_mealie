@@ -133,8 +133,16 @@ pub fn Courses() -> impl IntoView {
         }
     });
 
+    // Pendant la génération, les boutons sont désactivés : un second clic
+    // ajouterait les mêmes recettes une deuxième fois. Un échec est signalé.
+    let generate_pending = generate.pending();
+    let generate_failed = move || {
+        !generate_pending.get() && generate.value().with(|value| matches!(value, Some(Err(_))))
+    };
     let generate_from_planning = move |_| {
-        generate.dispatch((start.get_untracked(), end.get_untracked()));
+        if !generate_pending.get_untracked() {
+            generate.dispatch((start.get_untracked(), end.get_untracked()));
+        }
     };
 
     let handle_clear_all = move |_| {
@@ -289,6 +297,12 @@ pub fn Courses() -> impl IntoView {
             </div>
         </div>
 
+        <Show when=generate_failed>
+            <p class="courses-errorText">
+                "Échec de la génération de la liste de courses. Vérifiez que Mealie est joignable."
+            </p>
+        </Show>
+
         <Show when=move || is_loading.get()>
             <p class="courses-status">"Chargement…"</p>
         </Show>
@@ -296,8 +310,18 @@ pub fn Courses() -> impl IntoView {
         <Show when=move || show_empty.get()>
             <div class="courses-emptyState">
                 <p>"La liste est vide."</p>
-                <button class="courses-generateInline" on:click=generate_from_planning>
-                    "Générer depuis le planning du " {move || week_label.get()}
+                <button
+                    class="courses-generateInline"
+                    disabled=move || generate_pending.get()
+                    on:click=generate_from_planning
+                >
+                    {move || {
+                        if generate_pending.get() {
+                            "Génération en cours…".to_owned()
+                        } else {
+                            format!("Générer depuis le planning du {}", week_label.get())
+                        }
+                    }}
                 </button>
             </div>
         </Show>
@@ -328,8 +352,14 @@ pub fn Courses() -> impl IntoView {
                             "Les quantités identiques sont additionnées automatiquement entre les recettes du planning."
                         </span>
                     </div>
-                    <button class="courses-generateButton" on:click=generate_from_planning>
-                        "Régénérer depuis le planning"
+                    <button
+                        class="courses-generateButton"
+                        disabled=move || generate_pending.get()
+                        on:click=generate_from_planning
+                    >
+                        {move || {
+                            if generate_pending.get() { "Génération en cours…" } else { "Régénérer depuis le planning" }
+                        }}
                     </button>
                     <button class="courses-shareButton">"Partager la liste"</button>
                 </div>
